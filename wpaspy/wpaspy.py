@@ -23,17 +23,14 @@ class Ctrl:
 
         try:
             mode = os.stat(path).st_mode
-            if stat.S_ISSOCK(mode):
-                self.udp = False
-            else:
-                self.udp = True
+            self.udp = not stat.S_ISSOCK(mode)
         except:
             self.udp = True
 
         if not self.udp:
             self.s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             self.dest = path
-            self.local = "/tmp/wpa_ctrl_" + str(os.getpid()) + '-' + str(counter)
+            self.local = f"/tmp/wpa_ctrl_{os.getpid()}-{str(counter)}"
             counter += 1
             self.s.bind(self.local)
             try:
@@ -57,7 +54,7 @@ class Ctrl:
                 self.cookie = reply
                 self.port = port
             except:
-                print("connect exception ", path, str(port))
+                print("connect exception ", path, port)
                 if self.s != None:
                     self.s.close()
                 raise
@@ -73,7 +70,6 @@ class Ctrl:
             except Exception as e:
                 # Need to ignore this allow the socket to be closed
                 self.attached = False
-                pass
         if self.started:
             self.s.close()
             if not self.udp:
@@ -136,9 +132,7 @@ class Ctrl:
 
     def pending(self, timeout=0):
         [r, w, e] = select.select([self.s], [], [], timeout)
-        if r:
-            return True
-        return False
+        return bool(r)
 
     def recv(self):
         res = self.s.recv(4096).decode()

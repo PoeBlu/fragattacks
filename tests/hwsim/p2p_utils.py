@@ -85,7 +85,7 @@ def go_neg_pin_authorized_persistent(i_dev, r_dev, i_intent=None, r_intent=None,
         r_dev.p2p_listen()
     i_dev.p2p_listen()
     pin = r_dev.wps_read_pin()
-    logger.info("Start GO negotiation " + i_dev.ifname + " -> " + r_dev.ifname)
+    logger.info(f"Start GO negotiation {i_dev.ifname} -> {r_dev.ifname}")
     r_dev.p2p_go_neg_auth(i_dev.p2p_dev_addr(), pin, r_method,
                           go_intent=r_intent, persistent=True)
     if r_listen:
@@ -94,8 +94,8 @@ def go_neg_pin_authorized_persistent(i_dev, r_dev, i_intent=None, r_intent=None,
                                   timeout=20, go_intent=i_intent,
                                   persistent=True)
     r_res = r_dev.p2p_go_neg_auth_result()
-    logger.debug("i_res: " + str(i_res))
-    logger.debug("r_res: " + str(r_res))
+    logger.debug(f"i_res: {str(i_res)}")
+    logger.debug(f"r_res: {str(r_res)}")
     r_dev.dump_monitor()
     i_dev.dump_monitor()
     logger.info("Group formed")
@@ -120,12 +120,12 @@ def invite(inv, resp, extra=None, persistent_reconnect=True, use_listen=True):
     else:
         resp.p2p_find(social=True)
     if not inv.discover_peer(addr, social=True):
-        raise Exception("Peer " + addr + " not found")
+        raise Exception(f"Peer {addr} not found")
     inv.dump_monitor()
     peer = inv.get_peer(addr)
     cmd = "P2P_INVITE persistent=" + peer['persistent'] + " peer=" + addr
     if extra:
-        cmd = cmd + " " + extra
+        cmd = f"{cmd} {extra}"
     inv.global_request(cmd)
 
 def check_result(go, cli):
@@ -169,10 +169,7 @@ def form(go, cli, test_data=True, reverse_init=False, r_listen=True):
     if not i_res['persistent'] or not r_res['persistent']:
         raise Exception("Formed group was not persistent")
     terminate_group(go, cli)
-    if reverse_init:
-        return r_res
-    else:
-        return i_res
+    return r_res if reverse_init else i_res
 
 def invite_from_cli(go, cli, terminate=True):
     logger.info("Re-invoke persistent group from client")
@@ -193,9 +190,9 @@ def invite_from_go(go, cli, terminate=True, extra=None):
     return [go_res, cli_res]
 
 def autogo(go, freq=None, persistent=None):
-    logger.info("Start autonomous GO " + go.ifname)
+    logger.info(f"Start autonomous GO {go.ifname}")
     res = go.p2p_start_go(freq=freq, persistent=persistent)
-    logger.debug("res: " + str(res))
+    logger.debug(f"res: {str(res)}")
     return res
 
 def connect_cli(go, client, social=False, freq=None):
@@ -230,17 +227,19 @@ def go_neg_init(i_dev, r_dev, pin, i_method, i_intent, res):
     logger.debug("Initiate GO Negotiation from i_dev")
     try:
         i_res = i_dev.p2p_go_neg_init(r_dev.p2p_dev_addr(), pin, i_method, timeout=20, go_intent=i_intent)
-        logger.debug("i_res: " + str(i_res))
+        logger.debug(f"i_res: {str(i_res)}")
     except Exception as e:
         i_res = None
-        logger.info("go_neg_init thread caught an exception from p2p_go_neg_init: " + str(e))
+        logger.info(
+            f"go_neg_init thread caught an exception from p2p_go_neg_init: {str(e)}"
+        )
     res.put(i_res)
 
 def go_neg_pin(i_dev, r_dev, i_intent=None, r_intent=None, i_method='enter', r_method='display'):
     r_dev.p2p_listen()
     i_dev.p2p_listen()
     pin = r_dev.wps_read_pin()
-    logger.info("Start GO negotiation " + i_dev.ifname + " -> " + r_dev.ifname)
+    logger.info(f"Start GO negotiation {i_dev.ifname} -> {r_dev.ifname}")
     r_dev.dump_monitor()
     res = Queue()
     t = threading.Thread(target=go_neg_init, args=(i_dev, r_dev, pin, i_method, i_intent, res))
@@ -256,16 +255,16 @@ def go_neg_pin(i_dev, r_dev, i_intent=None, r_intent=None, i_method='enter', r_m
         r_res = r_dev.p2p_go_neg_init(i_dev.p2p_dev_addr(), pin, r_method,
                                       go_intent=r_intent, timeout=20)
     except Exception as e:
-        logger.info("go_neg_pin - r_dev.p2p_go_neg_init() exception: " + str(e))
+        logger.info(f"go_neg_pin - r_dev.p2p_go_neg_init() exception: {str(e)}")
         t.join()
         raise
-    logger.debug("r_res: " + str(r_res))
+    logger.debug(f"r_res: {str(r_res)}")
     r_dev.dump_monitor()
     t.join()
     i_res = res.get()
     if i_res is None:
         raise Exception("go_neg_init thread failed")
-    logger.debug("i_res: " + str(i_res))
+    logger.debug(f"i_res: {str(i_res)}")
     logger.info("Group formed")
     hwsim_utils.test_connectivity_p2p(r_dev, i_dev)
     i_dev.dump_monitor()
@@ -280,7 +279,7 @@ def go_neg_pin_authorized(i_dev, r_dev, i_intent=None, r_intent=None,
                           i_ht40=False, i_vht=False, r_ht40=False, r_vht=False):
     i_dev.p2p_listen()
     pin = r_dev.wps_read_pin()
-    logger.info("Start GO negotiation " + i_dev.ifname + " -> " + r_dev.ifname)
+    logger.info(f"Start GO negotiation {i_dev.ifname} -> {r_dev.ifname}")
     r_dev.p2p_go_neg_auth(i_dev.p2p_dev_addr(), pin, r_method,
                           go_intent=r_intent, freq=r_freq, freq2=r_freq2,
                           max_oper_chwidth=r_max_oper_chwidth, ht40=r_ht40,
@@ -293,8 +292,8 @@ def go_neg_pin_authorized(i_dev, r_dev, i_intent=None, r_intent=None,
                                   max_oper_chwidth=i_max_oper_chwidth,
                                   ht40=i_ht40, vht=i_vht)
     r_res = r_dev.p2p_go_neg_auth_result(expect_failure=expect_failure)
-    logger.debug("i_res: " + str(i_res))
-    logger.debug("r_res: " + str(r_res))
+    logger.debug(f"i_res: {str(i_res)}")
+    logger.debug(f"r_res: {str(r_res)}")
     r_dev.dump_monitor()
     i_dev.dump_monitor()
     if i_go_neg_status:
@@ -315,10 +314,12 @@ def go_neg_init_pbc(i_dev, r_dev, i_intent, res, freq, provdisc):
         i_res = i_dev.p2p_go_neg_init(r_dev.p2p_dev_addr(), None, "pbc",
                                       timeout=20, go_intent=i_intent, freq=freq,
                                       provdisc=provdisc)
-        logger.debug("i_res: " + str(i_res))
+        logger.debug(f"i_res: {str(i_res)}")
     except Exception as e:
         i_res = None
-        logger.info("go_neg_init_pbc thread caught an exception from p2p_go_neg_init: " + str(e))
+        logger.info(
+            f"go_neg_init_pbc thread caught an exception from p2p_go_neg_init: {str(e)}"
+        )
     res.put(i_res)
 
 def go_neg_pbc(i_dev, r_dev, i_intent=None, r_intent=None, i_freq=None, r_freq=None, provdisc=False, r_listen=False):
@@ -327,7 +328,7 @@ def go_neg_pbc(i_dev, r_dev, i_intent=None, r_intent=None, i_freq=None, r_freq=N
     else:
         r_dev.p2p_find(social=True)
     i_dev.p2p_find(social=True)
-    logger.info("Start GO negotiation " + i_dev.ifname + " -> " + r_dev.ifname)
+    logger.info(f"Start GO negotiation {i_dev.ifname} -> {r_dev.ifname}")
     r_dev.dump_monitor()
     res = Queue()
     t = threading.Thread(target=go_neg_init_pbc, args=(i_dev, r_dev, i_intent, res, i_freq, provdisc))
@@ -347,16 +348,16 @@ def go_neg_pbc(i_dev, r_dev, i_intent=None, r_intent=None, i_freq=None, r_freq=N
                                       go_intent=r_intent, timeout=20,
                                       freq=r_freq)
     except Exception as e:
-        logger.info("go_neg_pbc - r_dev.p2p_go_neg_init() exception: " + str(e))
+        logger.info(f"go_neg_pbc - r_dev.p2p_go_neg_init() exception: {str(e)}")
         t.join()
         raise
-    logger.debug("r_res: " + str(r_res))
+    logger.debug(f"r_res: {str(r_res)}")
     r_dev.dump_monitor()
     t.join()
     i_res = res.get()
     if i_res is None:
         raise Exception("go_neg_init_pbc thread failed")
-    logger.debug("i_res: " + str(i_res))
+    logger.debug(f"i_res: {str(i_res)}")
     logger.info("Group formed")
     hwsim_utils.test_connectivity_p2p(r_dev, i_dev)
     i_dev.dump_monitor()
@@ -365,7 +366,7 @@ def go_neg_pbc(i_dev, r_dev, i_intent=None, r_intent=None, i_freq=None, r_freq=N
 def go_neg_pbc_authorized(i_dev, r_dev, i_intent=None, r_intent=None,
                           expect_failure=False, i_freq=None, r_freq=None):
     i_dev.p2p_listen()
-    logger.info("Start GO negotiation " + i_dev.ifname + " -> " + r_dev.ifname)
+    logger.info(f"Start GO negotiation {i_dev.ifname} -> {r_dev.ifname}")
     r_dev.p2p_go_neg_auth(i_dev.p2p_dev_addr(), None, "pbc",
                           go_intent=r_intent, freq=r_freq)
     r_dev.p2p_listen()
@@ -373,8 +374,8 @@ def go_neg_pbc_authorized(i_dev, r_dev, i_intent=None, r_intent=None,
                                   go_intent=i_intent,
                                   expect_failure=expect_failure, freq=i_freq)
     r_res = r_dev.p2p_go_neg_auth_result(expect_failure=expect_failure)
-    logger.debug("i_res: " + str(i_res))
-    logger.debug("r_res: " + str(r_res))
+    logger.debug(f"i_res: {str(i_res)}")
+    logger.debug(f"r_res: {str(r_res)}")
     r_dev.dump_monitor()
     i_dev.dump_monitor()
     if expect_failure:

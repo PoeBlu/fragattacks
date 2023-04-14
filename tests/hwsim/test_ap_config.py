@@ -143,11 +143,11 @@ def write_hostapd_config(conffile, ifname, ssid, ht=True, bss2=False):
         f.write("channel=1\n")
         if ht:
             f.write("ieee80211n=1\n")
-        f.write("interface=" + ifname + "\n")
-        f.write("ssid=" + ssid + "\n")
+        f.write(f"interface={ifname}" + "\n")
+        f.write(f"ssid={ssid}" + "\n")
         if bss2:
-            f.write("bss=" + ifname + "_2\n")
-            f.write("ssid=" + ssid + "-2\n")
+            f.write(f"bss={ifname}" + "_2\n")
+            f.write(f"ssid={ssid}" + "-2\n")
 
 def test_ap_config_reload_on_sighup(dev, apdev, params):
     """hostapd configuration reload modification from file on SIGHUP"""
@@ -158,9 +158,8 @@ def test_ap_config_reload_on_sighup_no_ht(dev, apdev, params):
     run_ap_config_reload_on_sighup(dev, apdev, params, ht=False)
 
 def run_ap_config_reload_on_sighup(dev, apdev, params, ht=True):
-    name = "ap_config_reload_on_sighup"
     if not ht:
-        name += "_no_ht"
+        name = "ap_config_reload_on_sighup" + "_no_ht"
     pidfile = params['prefix'] + ".hostapd.pid"
     logfile = params['prefix'] + ".hostapd.log"
     conffile = params['prefix'] + ".hostapd.conf"
@@ -171,7 +170,7 @@ def run_ap_config_reload_on_sighup(dev, apdev, params, ht=True):
     cmd = [prg, '-B', '-dddt', '-P', pidfile, '-f', logfile, conffile]
     res = subprocess.check_call(cmd)
     if res != 0:
-        raise Exception("Could not start hostapd: %s" % str(res))
+        raise Exception(f"Could not start hostapd: {str(res)}")
 
     dev[0].connect("test-1", key_mgmt="NONE", scan_freq="2412")
     dev[0].request("REMOVE_NETWORK all")
@@ -192,7 +191,7 @@ def run_ap_config_reload_on_sighup(dev, apdev, params, ht=True):
 
     os.kill(pid, signal.SIGTERM)
     removed = False
-    for i in range(20):
+    for _ in range(20):
         time.sleep(0.1)
         if not os.path.exists(pidfile):
             removed = True
@@ -217,7 +216,7 @@ def test_ap_config_reload_on_sighup_bss_changes(dev, apdev, params):
     cmd = [prg, '-B', '-dddt', '-P', pidfile, '-f', logfile, conffile]
     res = subprocess.check_call(cmd)
     if res != 0:
-        raise Exception("Could not start hostapd: %s" % str(res))
+        raise Exception(f"Could not start hostapd: {str(res)}")
 
     dev[0].connect("test", key_mgmt="NONE", scan_freq="2412",
                    wait_connect=False)
@@ -354,8 +353,8 @@ def test_ap_config_invalid_value(dev, apdev, params):
              ("multi_ap", "255"),
              ("unknown-item", "foo")]
     for field, val in tests:
-        if "FAIL" not in hapd.request("SET %s %s" % (field, val)):
-            raise Exception("Invalid %s accepted" % field)
+        if "FAIL" not in hapd.request(f"SET {field} {val}"):
+            raise Exception(f"Invalid {field} accepted")
     hapd.enable()
     dev[0].connect("test", key_mgmt="NONE", scan_freq="2412")
 
@@ -364,7 +363,7 @@ def test_ap_config_eap_user_file_parsing(dev, apdev, params):
     tmp = params['prefix'] + '.tmp'
     hapd = hostapd.add_ap(apdev[0], {"ssid": "foobar"})
 
-    for i in range(2):
+    for _ in range(2):
         if "OK" not in hapd.request("SET eap_user_file auth_serv/eap_user.conf"):
             raise Exception("eap_user_file rejected")
 
@@ -392,7 +391,7 @@ def test_ap_config_eap_user_file_parsing(dev, apdev, params):
     for t in tests:
         with open(tmp, "w") as f:
             f.write(t)
-        if "FAIL" not in hapd.request("SET eap_user_file " + tmp):
+        if "FAIL" not in hapd.request(f"SET eap_user_file {tmp}"):
             raise Exception("Invalid eap_user_file accepted")
 
     tests = [("\"foo\" TLS\n", 2, "hostapd_config_read_eap_user"),
@@ -417,7 +416,7 @@ def test_ap_config_eap_user_file_parsing(dev, apdev, params):
         with alloc_fail(hapd, count, func):
             with open(tmp, "w") as f:
                 f.write(t)
-            if "FAIL" not in hapd.request("SET eap_user_file " + tmp):
+            if "FAIL" not in hapd.request(f"SET eap_user_file {tmp}"):
                 raise Exception("eap_user_file accepted during OOM")
 
 def test_ap_config_set_oom(dev, apdev):
@@ -487,7 +486,7 @@ def test_ap_config_set_oom(dev, apdev):
     for count, func, cmd in tests:
         with alloc_fail(hapd, count, func):
             if "FAIL" not in hapd.request(cmd):
-                raise Exception("Command accepted during OOM: " + cmd)
+                raise Exception(f"Command accepted during OOM: {cmd}")
 
     hapd.set("hs20_icon", "32:32:eng:image/png:icon32:/tmp/icon32.png")
     hapd.set("hs20_conn_capab", "1:0:2")
@@ -520,13 +519,13 @@ def test_ap_config_set_oom(dev, apdev):
     for count, func, cmd in tests:
         with alloc_fail(hapd, count, func):
             if "FAIL" not in hapd.request(cmd):
-                raise Exception("Command accepted during OOM (2): " + cmd)
+                raise Exception(f"Command accepted during OOM (2): {cmd}")
 
     tests = [(1, "parse_fils_realm", "SET fils_realm example.com")]
     for count, func, cmd in tests:
         with fail_test(hapd, count, func):
             if "FAIL" not in hapd.request(cmd):
-                raise Exception("Command accepted during FAIL_TEST: " + cmd)
+                raise Exception(f"Command accepted during FAIL_TEST: {cmd}")
 
 def test_ap_config_set_errors(dev, apdev):
     """hostapd configuration parsing errors"""
@@ -554,7 +553,7 @@ def test_ap_config_set_errors(dev, apdev):
              "SET acct_server_addr_replace foo"]
     for t in tests:
         if "FAIL" not in hapd.request(t):
-            raise Exception("Invalid command accepted: " + t)
+            raise Exception(f"Invalid command accepted: {t}")
 
     # Deprecated entries
     hapd.set("tx_queue_after_beacon_aifs", '2')

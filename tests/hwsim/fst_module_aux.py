@@ -35,10 +35,10 @@ def parse_fst_iface_event(ev):
         return None
     f = re.search("ifname=(\S+)", ev)
     if f is not None:
-        event['ifname'] = f.group(1)
+        event['ifname'] = f[1]
     f = re.search("group=(\S+)", ev)
     if f is not None:
-        event['group'] = f.group(1)
+        event['group'] = f[1]
     return event
 
 def parse_fst_session_event(ev):
@@ -46,26 +46,24 @@ def parse_fst_session_event(ev):
     "<3>FST-EVENT-SESSION event_type=EVENT_FST_SESSION_STATE session_id=0 reason=REASON_STT"
     Returns a dictionary with parsed "type", "id", and "reason"; or None if not
     a FST event or can't be parsed"""
-    event = {}
     if ev.find("FST-EVENT-SESSION") == -1:
         return None
-    event['new_state'] = '' # The field always exists in the dictionary
     f = re.search("event_type=(\S+)", ev)
     if f is None:
         return None
-    event['type'] = f.group(1)
+    event = {'new_state': '', 'type': f[1]}
     f = re.search("session_id=(\d+)", ev)
     if f is not None:
-        event['id'] = f.group(1)
+        event['id'] = f[1]
     f = re.search("old_state=(\S+)", ev)
     if f is not None:
-        event['old_state'] = f.group(1)
+        event['old_state'] = f[1]
     f = re.search("new_state=(\S+)", ev)
     if f is not None:
-        event['new_state'] = f.group(1)
+        event['new_state'] = f[1]
     f = re.search("reason=(\S+)", ev)
     if f is not None:
-        event['reason'] = f.group(1)
+        event['reason'] = f[1]
     return event
 
 def start_two_ap_sta_pairs(apdev, rsn=False):
@@ -143,7 +141,7 @@ def disconnect_external_sta(sta, ap, check_disconnect=True):
         hap = ap.get_instance()
         ev = hap.wait_event(["AP-STA-DISCONNECTED"], timeout=10)
         if ev is None:
-            raise Exception("No disconnection event received from %s" % ap.get_ssid())
+            raise Exception(f"No disconnection event received from {ap.get_ssid()}")
 
 #
 # FstDevice class
@@ -249,7 +247,7 @@ class FstDevice:
 
     def get_local_mbies(self, ifname=None):
         if_name = ifname if ifname is not None else self.iface
-        return self.grequest("FST-MANAGER TEST_REQUEST GET_LOCAL_MBIES " + if_name)
+        return self.grequest(f"FST-MANAGER TEST_REQUEST GET_LOCAL_MBIES {if_name}")
 
     def add_session(self):
         """Adds an FST session. add_peer() must be called calling this
@@ -257,22 +255,22 @@ class FstDevice:
         if self.peer_obj is None:
             raise Exception("Peer wasn't added before starting session")
         self.dump_monitor()
-        grp = ' ' + self.fst_group if self.fst_group != '' else ''
-        sid = self.grequest("FST-MANAGER SESSION_ADD" + grp)
+        grp = f' {self.fst_group}' if self.fst_group != '' else ''
+        sid = self.grequest(f"FST-MANAGER SESSION_ADD{grp}")
         sid = sid.strip()
         if sid.startswith("FAIL"):
-            raise Exception("Cannot add FST session with groupid ==" + grp)
+            raise Exception(f"Cannot add FST session with groupid =={grp}")
         self.dump_monitor()
         return sid
 
     def set_session_param(self, params):
         request = "FST-MANAGER SESSION_SET"
         if params is not None and params != '':
-            request = request + ' ' + params
+            request = f'{request} {params}'
         return self.grequest(request)
 
     def get_session_params(self, sid):
-        request = "FST-MANAGER SESSION_GET " + sid
+        request = f"FST-MANAGER SESSION_GET {sid}"
         res = self.grequest(request)
         if res.startswith("FAIL"):
             return None
@@ -284,34 +282,27 @@ class FstDevice:
 
     def iface_peers(self, ifname):
         grp = self.fst_group if self.fst_group != '' else ''
-        res = self.grequest("FST-MANAGER IFACE_PEERS " + grp + ' ' + ifname)
-        if res.startswith("FAIL"):
-            return None
-        return res.splitlines()
+        res = self.grequest(f"FST-MANAGER IFACE_PEERS {grp} {ifname}")
+        return None if res.startswith("FAIL") else res.splitlines()
 
     def get_peer_mbies(self, ifname, peer_addr):
-        return self.grequest("FST-MANAGER GET_PEER_MBIES %s %s" % (ifname, peer_addr))
+        return self.grequest(f"FST-MANAGER GET_PEER_MBIES {ifname} {peer_addr}")
 
     def list_ifaces(self):
         grp = self.fst_group if self.fst_group != '' else ''
-        res = self.grequest("FST-MANAGER LIST_IFACES " + grp)
+        res = self.grequest(f"FST-MANAGER LIST_IFACES {grp}")
         if res.startswith("FAIL"):
             return None
         ifaces = []
         for i in res.splitlines():
             p = i.split(':')
-            iface = {}
-            iface['name'] = p[0]
-            iface['priority'] = p[1]
-            iface['llt'] = p[2]
+            iface = {'name': p[0], 'priority': p[1], 'llt': p[2]}
             ifaces.append(iface)
         return ifaces
 
     def list_groups(self):
         res = self.grequest("FST-MANAGER LIST_GROUPS")
-        if res.startswith("FAIL"):
-            return None
-        return res.splitlines()
+        return None if res.startswith("FAIL") else res.splitlines()
 
     def configure_session(self, sid, new_iface, old_iface=None):
         """Calls session_set for a number of parameters some of which are stored
@@ -320,97 +311,97 @@ class FstDevice:
         string."""
         self.dump_monitor()
         oldiface = old_iface if old_iface is not None else self.iface
-        s = self.set_session_param(sid + ' old_ifname=' + oldiface)
+        s = self.set_session_param(f'{sid} old_ifname={oldiface}')
         if not s.startswith("OK"):
-            raise Exception("Cannot set FST session old_ifname: " + s)
+            raise Exception(f"Cannot set FST session old_ifname: {s}")
         if new_iface is not None:
-            s = self.set_session_param(sid + " new_ifname=" + new_iface)
+            s = self.set_session_param(f"{sid} new_ifname={new_iface}")
             if not s.startswith("OK"):
-                raise Exception("Cannot set FST session new_ifname:" + s)
+                raise Exception(f"Cannot set FST session new_ifname:{s}")
         if self.new_peer_addr is not None and self.new_peer_addr != '':
-            s = self.set_session_param(sid + " new_peer_addr=" + self.new_peer_addr)
+            s = self.set_session_param(f"{sid} new_peer_addr={self.new_peer_addr}")
             if not s.startswith("OK"):
-                raise Exception("Cannot set FST session peer address:" + s + " (new)")
+                raise Exception(f"Cannot set FST session peer address:{s} (new)")
         if self.old_peer_addr is not None and self.old_peer_addr != '':
-            s = self.set_session_param(sid + " old_peer_addr=" + self.old_peer_addr)
+            s = self.set_session_param(f"{sid} old_peer_addr={self.old_peer_addr}")
             if not s.startswith("OK"):
-                raise Exception("Cannot set FST session peer address:" + s + " (old)")
+                raise Exception(f"Cannot set FST session peer address:{s} (old)")
         if self.fst_llt is not None and self.fst_llt != '':
-            s = self.set_session_param(sid + " llt=" + self.fst_llt)
+            s = self.set_session_param(f"{sid} llt={self.fst_llt}")
             if not s.startswith("OK"):
-                raise Exception("Cannot set FST session llt:" + s)
+                raise Exception(f"Cannot set FST session llt:{s}")
         self.dump_monitor()
 
     def send_iface_attach_request(self, ifname, group, llt, priority):
-        request = "FST-ATTACH " + ifname + ' ' + group
+        request = f"FST-ATTACH {ifname} {group}"
         if llt is not None:
-            request += " llt=" + llt
+            request += f" llt={llt}"
         if priority is not None:
-            request += " priority=" + priority
+            request += f" priority={priority}"
         res = self.grequest(request)
         if not res.startswith("OK"):
-            raise Exception("Cannot attach FST iface: " + res)
+            raise Exception(f"Cannot attach FST iface: {res}")
 
     def send_iface_detach_request(self, ifname):
-        res = self.grequest("FST-DETACH " + ifname)
+        res = self.grequest(f"FST-DETACH {ifname}")
         if not res.startswith("OK"):
-            raise Exception("Cannot detach FST iface: " + res)
+            raise Exception(f"Cannot detach FST iface: {res}")
 
     def send_session_setup_request(self, sid):
-        s = self.grequest("FST-MANAGER SESSION_INITIATE " + sid)
+        s = self.grequest(f"FST-MANAGER SESSION_INITIATE {sid}")
         if not s.startswith('OK'):
-            raise Exception("Cannot send setup request: %s" % s)
+            raise Exception(f"Cannot send setup request: {s}")
         return s
 
     def send_session_setup_response(self, sid, response):
-        request = "FST-MANAGER SESSION_RESPOND " + sid + " " + response
+        request = f"FST-MANAGER SESSION_RESPOND {sid} {response}"
         s = self.grequest(request)
         if not s.startswith('OK'):
-            raise Exception("Cannot send setup response: %s" % s)
+            raise Exception(f"Cannot send setup response: {s}")
         return s
 
     def send_test_session_setup_request(self, fsts_id,
                                         additional_parameter=None):
-        request = "FST-MANAGER TEST_REQUEST SEND_SETUP_REQUEST " + fsts_id
+        request = f"FST-MANAGER TEST_REQUEST SEND_SETUP_REQUEST {fsts_id}"
         if additional_parameter is not None:
-            request += " " + additional_parameter
+            request += f" {additional_parameter}"
         s = self.grequest(request)
         if not s.startswith('OK'):
-            raise Exception("Cannot send FST setup request: %s" % s)
+            raise Exception(f"Cannot send FST setup request: {s}")
         return s
 
     def send_test_session_setup_response(self, fsts_id,
                                          response, additional_parameter=None):
-        request = "FST-MANAGER TEST_REQUEST SEND_SETUP_RESPONSE " + fsts_id + " " + response
+        request = f"FST-MANAGER TEST_REQUEST SEND_SETUP_RESPONSE {fsts_id} {response}"
         if additional_parameter is not None:
-            request += " " + additional_parameter
+            request += f" {additional_parameter}"
         s = self.grequest(request)
         if not s.startswith('OK'):
-            raise Exception("Cannot send FST setup response: %s" % s)
+            raise Exception(f"Cannot send FST setup response: {s}")
         return s
 
     def send_test_ack_request(self, fsts_id):
-        s = self.grequest("FST-MANAGER TEST_REQUEST SEND_ACK_REQUEST " + fsts_id)
+        s = self.grequest(f"FST-MANAGER TEST_REQUEST SEND_ACK_REQUEST {fsts_id}")
         if not s.startswith('OK'):
-            raise Exception("Cannot send FST ack request: %s" % s)
+            raise Exception(f"Cannot send FST ack request: {s}")
         return s
 
     def send_test_ack_response(self, fsts_id):
-        s = self.grequest("FST-MANAGER TEST_REQUEST SEND_ACK_RESPONSE " + fsts_id)
+        s = self.grequest(f"FST-MANAGER TEST_REQUEST SEND_ACK_RESPONSE {fsts_id}")
         if not s.startswith('OK'):
-            raise Exception("Cannot send FST ack response: %s" % s)
+            raise Exception(f"Cannot send FST ack response: {s}")
         return s
 
     def send_test_tear_down(self, fsts_id):
-        s = self.grequest("FST-MANAGER TEST_REQUEST SEND_TEAR_DOWN " + fsts_id)
+        s = self.grequest(f"FST-MANAGER TEST_REQUEST SEND_TEAR_DOWN {fsts_id}")
         if not s.startswith('OK'):
-            raise Exception("Cannot send FST tear down: %s" % s)
+            raise Exception(f"Cannot send FST tear down: {s}")
         return s
 
     def get_fsts_id_by_sid(self, sid):
-        s = self.grequest("FST-MANAGER TEST_REQUEST GET_FSTS_ID " + sid)
+        s = self.grequest(f"FST-MANAGER TEST_REQUEST GET_FSTS_ID {sid}")
         if s == ' ' or s.startswith('FAIL'):
-            raise Exception("Cannot get fsts_id for sid == %s" % sid)
+            raise Exception(f"Cannot get fsts_id for sid == {sid}")
         return int(s)
 
     def wait_for_iface_event(self, timeout):
@@ -434,12 +425,14 @@ class FstDevice:
             if event is None:
                 # We can't parse so it's not our event, wait for next one
                 continue
-            if len(events_to_ignore) > 0:
-                if event['type'] in events_to_ignore:
-                    continue
-            elif len(events_to_count) > 0:
-                if event['type'] not in events_to_count:
-                    continue
+            if (
+                len(events_to_ignore) > 0
+                and event['type'] in events_to_ignore
+                or len(events_to_ignore) <= 0
+                and len(events_to_count) > 0
+                and event['type'] not in events_to_count
+            ):
+                continue
             return event
 
     def initiate_session(self, sid, response="accept"):
@@ -449,16 +442,16 @@ class FstDevice:
         timeouts.
         Returns: "OK" - session has been initiated, otherwise the reason for the
         reset: REASON_REJECT, REASON_STT."""
-        strsid = ' ' + sid if sid != '' else ''
-        s = self.grequest("FST-MANAGER SESSION_INITIATE"+ strsid)
+        strsid = f' {sid}' if sid != '' else ''
+        s = self.grequest(f"FST-MANAGER SESSION_INITIATE{strsid}")
         if not s.startswith('OK'):
-            raise Exception("Cannot initiate fst session: %s" % s)
+            raise Exception(f"Cannot initiate fst session: {s}")
         ev = self.peer_obj.wait_gevent(["FST-EVENT-SESSION"], timeout=5)
         if ev is None:
             raise Exception("No FST-EVENT-SESSION received")
         # We got FST event
         event = parse_fst_session_event(ev)
-        if event == None:
+        if event is None:
             raise Exception("Unrecognized FST event: " % ev)
         if event['type'] != 'EVENT_FST_SETUP':
             raise Exception("Expected FST_SETUP event, got: " + event['type'])
@@ -466,7 +459,7 @@ class FstDevice:
         if ev is None:
             raise Exception("No FST-EVENT-SESSION received")
         event = parse_fst_session_event(ev)
-        if event == None:
+        if event is None:
             raise Exception("Unrecognized FST event: " % ev)
         if event['type'] != 'EVENT_FST_SESSION_STATE':
             raise Exception("Expected EVENT_FST_SESSION_STATE event, got: " + event['type'])
@@ -477,7 +470,7 @@ class FstDevice:
         if response != "timeout":
             s = self.peer_obj.grequest("FST-MANAGER SESSION_RESPOND "+ event['id'] + " " + response)  # Or reject
             if not s.startswith('OK'):
-                raise Exception("Error session_respond: %s" % s)
+                raise Exception(f"Error session_respond: {s}")
         # Wait for EVENT_FST_SESSION_STATE events. We should get at least 2
         # events. The 1st event will be EVENT_FST_SESSION_STATE
         # old_state=INITIAL new_state=SETUP_COMPLETED. The 2nd event will be
@@ -485,12 +478,12 @@ class FstDevice:
         # EVENT_FST_SESSION_STATE with new_state=INITIAL if the session was
         # reset, the reason field will tell why.
         result = ''
-        while result == '':
+        while not result:
             ev = self.wait_gevent(["FST-EVENT-SESSION"], timeout=5)
             if ev is None:
                 break # No session event received
             event = parse_fst_session_event(ev)
-            if event == None:
+            if event is None:
                 # We can't parse so it's not our event, wait for next one
                 continue
             if event['type'] == 'EVENT_FST_ESTABLISHED':
@@ -514,12 +507,12 @@ class FstDevice:
         request = "FST-MANAGER SESSION_TRANSFER"
         self.dump_monitor()
         if sid != '':
-            request += ' ' + sid
+            request += f' {sid}'
         s = self.grequest(request)
         if not s.startswith('OK'):
-            raise Exception("Cannot transfer fst session: %s" % s)
+            raise Exception(f"Cannot transfer fst session: {s}")
         result = ''
-        while result == '':
+        while not result:
             ev = self.peer_obj.wait_gevent(["FST-EVENT-SESSION"], timeout=5)
             if ev is None:
                 raise Exception("Missing session transfer event")
@@ -528,7 +521,7 @@ class FstDevice:
             # Right now we'll be waiting for the reset event and record the
             # reason.
             event = parse_fst_session_event(ev)
-            if event == None:
+            if event is None:
                 raise Exception("Unrecognized FST event: " % ev)
             if event['new_state'] == 'INITIAL':
                 result = event['reason']
@@ -541,7 +534,7 @@ class FstDevice:
             raise Exception("No FST-EVENT-SESSION received")
         # We got FST event
         event = parse_fst_session_event(ev)
-        if event == None:
+        if event is None:
             raise Exception("Unrecognized FST event: " % ev)
         if event['type'] != 'EVENT_FST_SESSION_STATE':
             raise Exception("Expected EVENT_FST_SESSION_STATE event, got: " + event['type'])
@@ -552,26 +545,26 @@ class FstDevice:
 
     def teardown_session(self, sid):
         """Tears down FST session with a given session id ('sid')"""
-        strsid = ' ' + sid if sid != '' else ''
-        s = self.grequest("FST-MANAGER SESSION_TEARDOWN" + strsid)
+        strsid = f' {sid}' if sid != '' else ''
+        s = self.grequest(f"FST-MANAGER SESSION_TEARDOWN{strsid}")
         if not s.startswith('OK'):
-            raise Exception("Cannot tear down fst session: %s" % s)
+            raise Exception(f"Cannot tear down fst session: {s}")
         self.peer_obj.wait_for_tear_down()
 
 
     def remove_session(self, sid, wait_for_tear_down=True):
         """Removes FST session with a given session id ('sid')"""
-        strsid = ' ' + sid if sid != '' else ''
-        s = self.grequest("FST-MANAGER SESSION_REMOVE" + strsid)
+        strsid = f' {sid}' if sid != '' else ''
+        s = self.grequest(f"FST-MANAGER SESSION_REMOVE{strsid}")
         if not s.startswith('OK'):
-            raise Exception("Cannot remove fst session: %s" % s)
+            raise Exception(f"Cannot remove fst session: {s}")
         if wait_for_tear_down == True:
             self.peer_obj.wait_for_tear_down()
 
     def remove_all_sessions(self):
         """Removes FST session with a given session id ('sid')"""
-        grp = ' ' + self.fst_group if self.fst_group != '' else ''
-        s = self.grequest("FST-MANAGER LIST_SESSIONS" + grp)
+        grp = f' {self.fst_group}' if self.fst_group != '' else ''
+        s = self.grequest(f"FST-MANAGER LIST_SESSIONS{grp}")
         if not s.startswith('FAIL'):
             for sid in s.splitlines():
                 sid = sid.strip()
@@ -600,11 +593,12 @@ class FstAP(FstDevice):
         """Starts AP the "standard" way as it was intended by hostapd tests.
         This will work only when FST supports fully dynamically loading
         parameters in hostapd."""
-        params = {}
-        params['ssid'] = self.ssid
-        params['hw_mode'] = self.mode
-        params['channel'] = self.chan
-        params['country_code'] = 'US'
+        params = {
+            'ssid': self.ssid,
+            'hw_mode': self.mode,
+            'channel': self.chan,
+            'country_code': 'US',
+        }
         if self.rsn:
             params['wpa'] = '2'
             params['wpa_key_mgmt'] = 'WPA-PSK'
@@ -656,16 +650,11 @@ class FstAP(FstDevice):
         # station address
         h = self.get_instance()
         sta = h.get_sta(None)
-        if sta is None or 'addr' not in sta:
-            # Maybe station is not connected?
-            addr = None
-        else:
-            addr = sta['addr']
-        return addr
+        return None if sta is None or 'addr' not in sta else sta['addr']
 
     def grequest(self, req):
         """Send request on the global control interface"""
-        logger.debug("FstAP::grequest: " + req)
+        logger.debug(f"FstAP::grequest: {req}")
         h = self.get_global_instance()
         return h.request(req)
 
@@ -745,7 +734,7 @@ class FstSTA(FstDevice):
 
     def grequest(self, req):
         """Send request on the global control interface"""
-        logger.debug("FstSTA::grequest: " + req)
+        logger.debug(f"FstSTA::grequest: {req}")
         h = self.get_instance()
         return h.global_request(req)
 
@@ -793,22 +782,25 @@ class FstSTA(FstDevice):
             ev = ap.wait_event(["AP-STA-CONNECTED"], timeout=10)
             if ev is None:
                 self.connected = None
-                raise Exception("No connection event received from %s" % ssid)
+                raise Exception(f"No connection event received from {ssid}")
             h.dump_monitor()
 
     def disconnect(self, check_disconnect=True):
         """Disconnects from the AP the station is currently connected to"""
-        if self.connected is not None:
-            h = self.get_instance()
+        if self.connected is None:
+            return
+        h = self.get_instance()
+        h.dump_monitor()
+        h.request("DISCONNECT")
+        if check_disconnect:
+            hap = self.connected.get_instance()
+            ev = hap.wait_event(["AP-STA-DISCONNECTED"], timeout=10)
+            if ev is None:
+                raise Exception(
+                    f"No disconnection event received from {self.connected.get_ssid()}"
+                )
             h.dump_monitor()
-            h.request("DISCONNECT")
-            if check_disconnect:
-                hap = self.connected.get_instance()
-                ev = hap.wait_event(["AP-STA-DISCONNECTED"], timeout=10)
-                if ev is None:
-                    raise Exception("No disconnection event received from %s" % self.connected.get_ssid())
-                h.dump_monitor()
-            self.connected = None
+        self.connected = None
 
 
     def disconnect_from_external_ap(self, check_disconnect=True):

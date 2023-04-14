@@ -14,21 +14,15 @@ from wpasupplicant import WpaSupplicant
 def config_data_test(dev1, dev2, dev1group, dev2group, ifname1, ifname2):
     cmd = "DATA_TEST_CONFIG 1"
     if ifname1:
-        cmd = cmd + " ifname=" + ifname1
-    if dev1group:
-        res = dev1.group_request(cmd)
-    else:
-        res = dev1.request(cmd)
+        cmd = f"{cmd} ifname={ifname1}"
+    res = dev1.group_request(cmd) if dev1group else dev1.request(cmd)
     if "OK" not in res:
         raise Exception("Failed to enable data test functionality")
 
     cmd = "DATA_TEST_CONFIG 1"
     if ifname2:
-        cmd = cmd + " ifname=" + ifname2
-    if dev2group:
-        res = dev2.group_request(cmd)
-    else:
-        res = dev2.request(cmd)
+        cmd = f"{cmd} ifname={ifname2}"
+    res = dev2.group_request(cmd) if dev2group else dev2.request(cmd)
     if "OK" not in res:
         raise Exception("Failed to enable data test functionality")
 
@@ -44,9 +38,9 @@ def run_multicast_connectivity_test(dev1, dev2, tos=None,
     if config:
         config_data_test(dev1, dev2, dev1group, dev2group, ifname1, ifname2)
 
-    cmd = "DATA_TEST_TX ff:ff:ff:ff:ff:ff {} {}".format(addr1, tos)
+    cmd = f"DATA_TEST_TX ff:ff:ff:ff:ff:ff {addr1} {tos}"
     if send_len is not None:
-        cmd += " len=" + str(send_len)
+        cmd += f" len={str(send_len)}"
     for i in range(broadcast_retry_c):
         try:
             if dev1group:
@@ -61,19 +55,19 @@ def run_multicast_connectivity_test(dev1, dev2, tos=None,
             if ev is None:
                 raise Exception("dev1->dev2 broadcast data delivery failed")
             if multicast_to_unicast:
-                if "DATA-TEST-RX ff:ff:ff:ff:ff:ff {}".format(addr1) in ev:
+                if f"DATA-TEST-RX ff:ff:ff:ff:ff:ff {addr1}" in ev:
                     raise Exception("Unexpected dev1->dev2 broadcast data result: multicast to unicast conversion missing")
-                if "DATA-TEST-RX {} {}".format(addr2, addr1) not in ev:
+                if f"DATA-TEST-RX {addr2} {addr1}" not in ev:
                     raise Exception("Unexpected dev1->dev2 broadcast data result (multicast to unicast enabled)")
-            else:
-                if "DATA-TEST-RX ff:ff:ff:ff:ff:ff {}".format(addr1) not in ev:
-                    raise Exception("Unexpected dev1->dev2 broadcast data result")
-            if send_len is not None:
-                if " len=" + str(send_len) not in ev:
-                    raise Exception("Unexpected dev1->dev2 broadcast data length")
-            else:
-                if " len=" in ev:
-                    raise Exception("Unexpected dev1->dev2 broadcast data length")
+            elif f"DATA-TEST-RX ff:ff:ff:ff:ff:ff {addr1}" not in ev:
+                raise Exception("Unexpected dev1->dev2 broadcast data result")
+            if (
+                send_len is not None
+                and f" len={str(send_len)}" not in ev
+                or send_len is None
+                and " len=" in ev
+            ):
+                raise Exception("Unexpected dev1->dev2 broadcast data length")
             break
         except Exception as e:
             if i == broadcast_retry_c - 1:
@@ -98,9 +92,9 @@ def run_connectivity_test(dev1, dev2, tos, dev1group=False, dev2group=False,
         if config:
             config_data_test(dev1, dev2, dev1group, dev2group, ifname1, ifname2)
 
-        cmd = "DATA_TEST_TX {} {} {}".format(addr2, addr1, tos)
+        cmd = f"DATA_TEST_TX {addr2} {addr1} {tos}"
         if send_len is not None:
-            cmd += " len=" + str(send_len)
+            cmd += f" len={str(send_len)}"
         if dev1group:
             dev1.group_request(cmd)
         else:
@@ -111,24 +105,24 @@ def run_connectivity_test(dev1, dev2, tos, dev1group=False, dev2group=False,
             ev = dev2.wait_event(["DATA-TEST-RX"], timeout=timeout)
         if ev is None:
             raise Exception("dev1->dev2 unicast data delivery failed")
-        if "DATA-TEST-RX {} {}".format(addr2, addr1) not in ev:
+        if f"DATA-TEST-RX {addr2} {addr1}" not in ev:
             raise Exception("Unexpected dev1->dev2 unicast data result")
-        if send_len is not None:
-            if " len=" + str(send_len) not in ev:
-                raise Exception("Unexpected dev1->dev2 unicast data length")
-        else:
-            if " len=" in ev:
-                raise Exception("Unexpected dev1->dev2 unicast data length")
-
+        if (
+            send_len is not None
+            and f" len={str(send_len)}" not in ev
+            or send_len is None
+            and " len=" in ev
+        ):
+            raise Exception("Unexpected dev1->dev2 unicast data length")
         if broadcast:
             run_multicast_connectivity_test(dev1, dev2, tos,
                                             dev1group, dev2group,
                                             ifname1, ifname2, False, timeout,
                                             send_len, False, broadcast_retry_c)
 
-        cmd = "DATA_TEST_TX {} {} {}".format(addr1, addr2, tos)
+        cmd = f"DATA_TEST_TX {addr1} {addr2} {tos}"
         if send_len is not None:
-            cmd += " len=" + str(send_len)
+            cmd += f" len={str(send_len)}"
         if dev2group:
             dev2.group_request(cmd)
         else:
@@ -139,15 +133,15 @@ def run_connectivity_test(dev1, dev2, tos, dev1group=False, dev2group=False,
             ev = dev1.wait_event(["DATA-TEST-RX"], timeout=timeout)
         if ev is None:
             raise Exception("dev2->dev1 unicast data delivery failed")
-        if "DATA-TEST-RX {} {}".format(addr1, addr2) not in ev:
+        if f"DATA-TEST-RX {addr1} {addr2}" not in ev:
             raise Exception("Unexpected dev2->dev1 unicast data result")
-        if send_len is not None:
-            if " len=" + str(send_len) not in ev:
-                raise Exception("Unexpected dev2->dev1 unicast data length")
-        else:
-            if " len=" in ev:
-                raise Exception("Unexpected dev2->dev1 unicast data length")
-
+        if (
+            send_len is not None
+            and f" len={str(send_len)}" not in ev
+            or send_len is None
+            and " len=" in ev
+        ):
+            raise Exception("Unexpected dev2->dev1 unicast data length")
         if broadcast:
             run_multicast_connectivity_test(dev2, dev1, tos,
                                             dev2group, dev1group,
@@ -178,7 +172,7 @@ def test_connectivity(dev1, dev2, dscp=None, tos=None, max_tries=1,
 
     success = False
     last_err = None
-    for i in range(0, max_tries):
+    for i in range(max_tries):
         try:
             run_connectivity_test(dev1, dev2, tos, dev1group, dev2group,
                                   ifname1, ifname2, config=config,
@@ -214,7 +208,7 @@ def test_connectivity_sta(dev1, dev2, dscp=None, tos=None):
 
 def set_powersave(dev, val):
     phy = dev.get_driver_status_field("phyname")
-    fname = '/sys/kernel/debug/ieee80211/%s/hwsim/ps' % phy
+    fname = f'/sys/kernel/debug/ieee80211/{phy}/hwsim/ps'
     data = '%d' % val
     (res, data) = dev.cmd_execute(["echo", data, ">", fname], shell=True)
     if res != 0:
@@ -222,11 +216,11 @@ def set_powersave(dev, val):
 
 def set_group_map(dev, val):
     phy = dev.get_driver_status_field("phyname")
-    fname = '/sys/kernel/debug/ieee80211/%s/hwsim/group' % phy
+    fname = f'/sys/kernel/debug/ieee80211/{phy}/hwsim/group'
     data = '%d' % val
     (res, data) = dev.cmd_execute(["echo", data, ">", fname], shell=True)
     if res != 0:
-        raise Exception("Failed to set group map for %s" % phy)
+        raise Exception(f"Failed to set group map for {phy}")
 
 def set_rx_rssi(dev, val):
     """

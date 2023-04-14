@@ -29,10 +29,7 @@ def str2bytes(password):
 		return bytes(password, 'utf8')
 
 def getord(value):
-	if isinstance(value, int):
-		return value
-	else:
-		return ord(value)
+	return value if isinstance(value, int) else ord(value)
 
 def HMAC256(pw, data):
 	h = HMAC.new(pw, digestmod=SHA256)
@@ -69,9 +66,7 @@ def point_to_data(p):
 # ----------------------- WPA3 ---------------------------------
 
 def is_sae(p):
-	if not Dot11Auth in p:
-		return False
-	return p[Dot11Auth].algo == 3
+	return False if Dot11Auth not in p else p[Dot11Auth].algo == 3
 
 def is_sae_commit(p):
 	return is_sae(p) and p[Dot11Auth].seqnum == 1
@@ -100,9 +95,9 @@ def derive_pwe_ecc(password, addr1, addr2, curve_name="p256"):
 	for counter in range(1, 100):
 		hash_data = str2bytes(password) + struct.pack("<B", counter)
 		pwd_seed = HMAC256(hash_pw, hash_data)
-		log(DEBUG, "PWD-seed: %s" % pwd_seed)
+		log(DEBUG, f"PWD-seed: {pwd_seed}")
 		pwd_value = KDF_Length(pwd_seed, "SAE Hunting and Pecking", curve.p.to_bytes(bits // 8), bits)
-		log(DEBUG, "PWD-value: %s" % pwd_value)
+		log(DEBUG, f"PWD-value: {pwd_value}")
 		pwd_value = int(binascii.hexlify(pwd_value), 16)
 
 		if pwd_value >= curve.p:
@@ -128,7 +123,7 @@ def calc_k_kck_pmk(pwe, peer_element, peer_scalar, my_rand, my_scalar):
 	keyseed = HMAC256(b"\x00" * 32, int_to_data(k))
 	kck_and_pmk = KDF_Length(keyseed, "SAE KCK and PMK",
 	                         int_to_data((my_scalar + peer_scalar) % secp256r1_r), 512)
-	kck = kck_and_pmk[0:32]
+	kck = kck_and_pmk[:32]
 	pmk = kck_and_pmk[32:]
 
 	return k, kck, pmk
@@ -208,7 +203,7 @@ class SAEHandshake():
 		keyseed = HMAC256("\x00"*32, int_to_data(k))
 		kck_and_pmk = KDF_Length(keyseed, "SAE KCK and PMK",
 		                         int_to_data((self.scalar + self.peer_scalar) % secp256r1_r), 512)
-		self.kck = kck_and_pmk[0:32]
+		self.kck = kck_and_pmk[:32]
 		self.pmk = kck_and_pmk[32:]
 
 		self.send_confirm()
@@ -262,13 +257,13 @@ def derive_pwe_ecc_eappwd(password, peer_id, server_id, token, curve_name="p256"
 	for counter in range(1, 100):
 		hash_data = hash_pw + struct.pack("<B", counter)
 		pwd_seed = HMAC256(b"\x00", hash_data)
-		log(DEBUG, "PWD-Seed: %s" % pwd_seed)
+		log(DEBUG, f"PWD-Seed: {pwd_seed}")
 		pwd_value = KDF_Length_eappwd(pwd_seed, "EAP-pwd Hunting And Pecking", bits)
-		log(DEBUG, "PWD-Value: %s" % pwd_value)
+		log(DEBUG, f"PWD-Value: {pwd_value}")
 		pwd_value = int(binascii.hexlify(pwd_value), 16)
 
 		if bits % 8 != 0:
-			pwd_value = pwd_value >> (8 - (521 % 8))
+			pwd_value >>= 8 - (521 % 8)
 
 		if pwd_value >= curve.p:
 			continue
@@ -281,11 +276,10 @@ def derive_pwe_ecc_eappwd(password, peer_id, server_id, token, curve_name="p256"
 
 		y = y_sqr.sqrt(curve.p)
 		y_bit = getord(pwd_seed[-1]) & 1
+		if info is not None: info["counter"] = counter
 		if y & 1 == y_bit:
-			if not info is None: info["counter"] = counter
 			return ECC.EccPoint(x, y, curve_name)
 		else:
-			if not info is None: info["counter"] = counter
 			return ECC.EccPoint(x, curve.p - y, curve_name)
 
 
@@ -296,8 +290,7 @@ def calculate_confirm_eappwd(k, element1, scalar1, element2, scalar2, group_num=
 	hash_data += point_to_data(element2)
 	hash_data += int_to_data(scalar2)
 	hash_data += struct.pack(">HBB", group_num, rand_func, prf)
-	confirm = HMAC256(b"\x00" * 32, hash_data)
-	return confirm
+	return HMAC256(b"\x00" * 32, hash_data)
 
 # ----------------------- Fuzzing/Testing ---------------------------------
 
@@ -311,13 +304,7 @@ def inject_sae_auth(srcaddr, bssid):
 	element_y = 0
 	p = p/Raw(struct.pack("<H", group_id))
 
-	if False:
-		# Convert to octets
-		commit_scalar = ("%064x" % scalar).decode("hex")
-		commit_element = ("%064x" % element_x).decode("hex") + ("%064x" % element_y).decode("hex")
-		p = p / Raw(commit_scalar + commit_element)
-	else:
-		p = p / Raw(open("/dev/urandom").read(32*3))
+	p = p / Raw(open("/dev/urandom").read(32*3))
 	sendp(RadioTap()/p)
 
 def forge_sae_confirm(bssid, stamac):

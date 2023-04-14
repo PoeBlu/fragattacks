@@ -31,7 +31,7 @@ def test_ap_pmf_required(dev, apdev):
     wt.add_passphrase("12345678")
     key_mgmt = hapd.get_config()['key_mgmt']
     if key_mgmt.split(' ')[0] != "WPA-PSK-SHA256":
-        raise Exception("Unexpected GET_CONFIG(key_mgmt): " + key_mgmt)
+        raise Exception(f"Unexpected GET_CONFIG(key_mgmt): {key_mgmt}")
     dev[0].connect(ssid, psk="12345678", ieee80211w="1",
                    key_mgmt="WPA-PSK WPA-PSK-SHA256", proto="WPA2",
                    scan_freq="2412")
@@ -42,9 +42,9 @@ def test_ap_pmf_required(dev, apdev):
                    key_mgmt="WPA-PSK WPA-PSK-SHA256", proto="WPA2",
                    scan_freq="2412")
     hwsim_utils.test_connectivity(dev[1], hapd)
-    if "OK" not in hapd.request("SA_QUERY " + dev[0].own_addr()):
+    if "OK" not in hapd.request(f"SA_QUERY {dev[0].own_addr()}"):
         raise Exception("SA_QUERY failed")
-    if "OK" not in hapd.request("SA_QUERY " + dev[1].own_addr()):
+    if "OK" not in hapd.request(f"SA_QUERY {dev[1].own_addr()}"):
         raise Exception("SA_QUERY failed")
     if "FAIL" not in hapd.request("SA_QUERY foo"):
         raise Exception("Invalid SA_QUERY accepted")
@@ -88,7 +88,7 @@ def test_ocv_sa_query(dev, apdev):
                    scan_freq="2412")
 
     # Test that client can handle SA Query with OCI element
-    if "OK" not in hapd.request("SA_QUERY " + dev[0].own_addr()):
+    if "OK" not in hapd.request(f"SA_QUERY {dev[0].own_addr()}"):
         raise Exception("SA_QUERY failed")
     ev = hapd.wait_event(["OCV-FAILURE"], timeout=0.1)
     if ev:
@@ -135,7 +135,7 @@ def test_ocv_sa_query_csa_no_resp(dev, apdev):
     if ev is None:
         raise Exception("Disconnection after CSA not reported")
     if "locally_generated=1" not in ev:
-        raise Exception("Unexpectedly disconnected by AP: " + ev)
+        raise Exception(f"Unexpectedly disconnected by AP: {ev}")
 
 def test_ocv_sa_query_csa_missing(dev, apdev):
     """Test SA Query with OCV missing after channel switch"""
@@ -229,7 +229,7 @@ def test_ap_pmf_negative(dev, apdev):
         hwsim_utils.test_connectivity(dev[1], hapd)
         raise Exception("PMF required STA connected to no PMF AP")
     except Exception as e:
-        logger.debug("Ignore expected exception: " + str(e))
+        logger.debug(f"Ignore expected exception: {str(e)}")
     wt.require_ap_no_pmf(apdev[0]['bssid'])
 
 @remote_compatible
@@ -327,13 +327,15 @@ def test_ap_pmf_ap_dropping_sa(dev, apdev):
     # Drop SA and association at the AP locally without notifying the STA. This
     # results in the STA getting unprotected Deauthentication frames when trying
     # to transmit the next Class 3 frame.
-    if "OK" not in hapd.request("DEAUTHENTICATE " + addr0 + " tx=0"):
+    if "OK" not in hapd.request(f"DEAUTHENTICATE {addr0} tx=0"):
         raise Exception("DEAUTHENTICATE command failed")
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
     if ev is not None:
-        raise Exception("Unexpected disconnection event after DEAUTHENTICATE tx=0: " + ev)
+        raise Exception(
+            f"Unexpected disconnection event after DEAUTHENTICATE tx=0: {ev}"
+        )
     dev[0].request("DATA_TEST_CONFIG 1")
-    dev[0].request("DATA_TEST_TX " + bssid + " " + addr0)
+    dev[0].request(f"DATA_TEST_TX {bssid} {addr0}")
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=5)
     dev[0].request("DATA_TEST_CONFIG 0")
     if ev is None or "locally_generated=1" not in ev:
@@ -423,17 +425,17 @@ def test_ap_pmf_sta_sa_query(dev, apdev):
                    key_mgmt="WPA-PSK WPA-PSK-SHA256", proto="WPA2",
                    scan_freq="2412")
     wpas.dump_monitor()
-    wpas.request("DEAUTHENTICATE " + addr + " test=0")
+    wpas.request(f"DEAUTHENTICATE {addr} test=0")
     wpas.dump_monitor()
-    wpas.request("DISASSOCIATE " + addr + " test=0")
+    wpas.request(f"DISASSOCIATE {addr} test=0")
     wpas.dump_monitor()
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
     if ev is not None:
         raise Exception("Unexpected disconnection")
 
-    wpas.request("DEAUTHENTICATE " + addr + " reason=6 test=0")
+    wpas.request(f"DEAUTHENTICATE {addr} reason=6 test=0")
     wpas.dump_monitor()
-    wpas.request("DISASSOCIATE " + addr + " reason=7 test=0")
+    wpas.request(f"DISASSOCIATE {addr} reason=7 test=0")
     wpas.dump_monitor()
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
     if ev is not None:
@@ -456,18 +458,18 @@ def test_ap_pmf_sta_sa_query_no_response(dev, apdev):
                    key_mgmt="WPA-PSK WPA-PSK-SHA256", proto="WPA2",
                    scan_freq="2412")
     wpas.dump_monitor()
-    wpas.request("DEAUTHENTICATE " + addr + " test=0")
+    wpas.request(f"DEAUTHENTICATE {addr} test=0")
     wpas.dump_monitor()
-    wpas.request("DISASSOCIATE " + addr + " test=0")
+    wpas.request(f"DISASSOCIATE {addr} test=0")
     wpas.dump_monitor()
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
     if ev is not None:
         raise Exception("Unexpected disconnection")
 
     wpas.request("SET ext_mgmt_frame_handling 1")
-    wpas.request("DEAUTHENTICATE " + addr + " reason=6 test=0")
+    wpas.request(f"DEAUTHENTICATE {addr} reason=6 test=0")
     wpas.dump_monitor()
-    wpas.request("DISASSOCIATE " + addr + " reason=7 test=0")
+    wpas.request(f"DISASSOCIATE {addr} reason=7 test=0")
     wpas.dump_monitor()
     dev[0].wait_disconnected()
     wpas.dump_monitor()
@@ -492,9 +494,9 @@ def test_ap_pmf_sta_unprot_deauth_burst(dev, apdev):
                    key_mgmt="WPA-PSK WPA-PSK-SHA256", proto="WPA2",
                    scan_freq="2412")
 
-    for i in range(0, 10):
-        wpas.request("DEAUTHENTICATE " + addr + " reason=6 test=0")
-        wpas.request("DISASSOCIATE " + addr + " reason=7 test=0")
+    for _ in range(10):
+        wpas.request(f"DEAUTHENTICATE {addr} reason=6 test=0")
+        wpas.request(f"DISASSOCIATE {addr} reason=7 test=0")
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
     if ev is not None:
         raise Exception("Unexpected disconnection")
@@ -508,9 +510,9 @@ def test_ap_pmf_sta_unprot_deauth_burst(dev, apdev):
         raise Exception("STA initiated too many SA Query procedures (%d)" % num_req)
 
     time.sleep(10)
-    for i in range(0, 5):
-        wpas.request("DEAUTHENTICATE " + addr + " reason=6 test=0")
-        wpas.request("DISASSOCIATE " + addr + " reason=7 test=0")
+    for _ in range(5):
+        wpas.request(f"DEAUTHENTICATE {addr} reason=6 test=0")
+        wpas.request(f"DISASSOCIATE {addr} reason=7 test=0")
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
     if ev is not None:
         raise Exception("Unexpected disconnection")
@@ -528,7 +530,7 @@ def test_ap_pmf_sta_sa_query_oom(dev, apdev):
                    key_mgmt="WPA-PSK WPA-PSK-SHA256", proto="WPA2",
                    scan_freq="2412")
     with alloc_fail(dev[0], 1, "=sme_sa_query_timer"):
-        wpas.request("DEAUTHENTICATE " + addr + " reason=6 test=0")
+        wpas.request(f"DEAUTHENTICATE {addr} reason=6 test=0")
         wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
     dev[0].request("DISCONNECT")
     wpas.request("DISCONNECT")
@@ -543,7 +545,7 @@ def test_ap_pmf_sta_sa_query_local_failure(dev, apdev):
                    key_mgmt="WPA-PSK WPA-PSK-SHA256", proto="WPA2",
                    scan_freq="2412")
     with fail_test(dev[0], 1, "os_get_random;sme_sa_query_timer"):
-        wpas.request("DEAUTHENTICATE " + addr + " reason=6 test=0")
+        wpas.request(f"DEAUTHENTICATE {addr} reason=6 test=0")
         wait_fail_trigger(dev[0], "GET_FAIL")
     dev[0].request("DISCONNECT")
     wpas.request("DISCONNECT")
@@ -570,15 +572,17 @@ def test_ap_pmf_sta_sa_query_hostapd(dev, apdev):
                    key_mgmt="WPA-PSK-SHA256", proto="WPA2",
                    scan_freq="2412")
     hapd.wait_sta()
-    if "OK" not in hapd.request("DEAUTHENTICATE " + addr + " test=0") or \
-       "OK" not in hapd.request("DISASSOCIATE " + addr + " test=0"):
+    if "OK" not in hapd.request(
+        f"DEAUTHENTICATE {addr} test=0"
+    ) or "OK" not in hapd.request(f"DISASSOCIATE {addr} test=0"):
         raise Exception("Failed to send unprotected disconnection messages")
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
     if ev is not None:
         raise Exception("Unexpected disconnection")
 
-    if "OK" not in hapd.request("DEAUTHENTICATE " + addr + " reason=6 test=0") or \
-       "OK" not in hapd.request("DISASSOCIATE " + addr + " reason=7 test=0"):
+    if "OK" not in hapd.request(
+        f"DEAUTHENTICATE {addr} reason=6 test=0"
+    ) or "OK" not in hapd.request(f"DISASSOCIATE {addr} reason=7 test=0"):
         raise Exception("Failed to send unprotected disconnection messages (2)")
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
     if ev is not None:
@@ -610,8 +614,9 @@ def test_ap_pmf_sta_sa_query_no_response_hostapd(dev, apdev):
                    scan_freq="2412")
     hapd.wait_sta()
     hapd.set("ext_mgmt_frame_handling", "1")
-    if "OK" not in hapd.request("DEAUTHENTICATE " + addr + " reason=6 test=0") or \
-       "OK" not in hapd.request("DISASSOCIATE " + addr + " reason=7 test=0"):
+    if "OK" not in hapd.request(
+        f"DEAUTHENTICATE {addr} reason=6 test=0"
+    ) or "OK" not in hapd.request(f"DISASSOCIATE {addr} reason=7 test=0"):
         raise Exception("Failed to send unprotected disconnection messages")
     dev[0].wait_disconnected()
     hapd.set("ext_mgmt_frame_handling", "0")
@@ -642,9 +647,10 @@ def test_ap_pmf_sta_unprot_deauth_burst_hostapd(dev, apdev):
                    key_mgmt="WPA-PSK-SHA256", proto="WPA2",
                    scan_freq="2412")
     hapd.wait_sta()
-    for i in range(10):
-        if "OK" not in hapd.request("DEAUTHENTICATE " + addr + " reason=6 test=0") or \
-           "OK" not in hapd.request("DISASSOCIATE " + addr + " reason=7 test=0"):
+    for _ in range(10):
+        if "OK" not in hapd.request(
+            f"DEAUTHENTICATE {addr} reason=6 test=0"
+        ) or "OK" not in hapd.request(f"DISASSOCIATE {addr} reason=7 test=0"):
             raise Exception("Failed to send unprotected disconnection messages")
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
     if ev is not None:
@@ -659,9 +665,10 @@ def test_ap_pmf_sta_unprot_deauth_burst_hostapd(dev, apdev):
         raise Exception("STA initiated too many SA Query procedures (%d)" % num_req)
 
     time.sleep(10)
-    for i in range(5):
-        if "OK" not in hapd.request("DEAUTHENTICATE " + addr + " reason=6 test=0") or \
-           "OK" not in hapd.request("DISASSOCIATE " + addr + " reason=7 test=0"):
+    for _ in range(5):
+        if "OK" not in hapd.request(
+            f"DEAUTHENTICATE {addr} reason=6 test=0"
+        ) or "OK" not in hapd.request(f"DISASSOCIATE {addr} reason=7 test=0"):
             raise Exception("Failed to send unprotected disconnection messages")
     ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=1)
     if ev is not None:
@@ -680,7 +687,7 @@ def test_ap_pmf_required_eap(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     key_mgmt = hapd.get_config()['key_mgmt']
     if key_mgmt.split(' ')[0] != "WPA-EAP-SHA256":
-        raise Exception("Unexpected GET_CONFIG(key_mgmt): " + key_mgmt)
+        raise Exception(f"Unexpected GET_CONFIG(key_mgmt): {key_mgmt}")
     dev[0].connect("test-pmf-required-eap", key_mgmt="WPA-EAP-SHA256",
                    ieee80211w="2", eap="PSK", identity="psk.user@example.com",
                    password_hex="0123456789abcdef0123456789abcdef",
@@ -720,7 +727,7 @@ def test_ap_pmf_required_sha1(dev, apdev):
     wt.add_passphrase("12345678")
     key_mgmt = hapd.get_config()['key_mgmt']
     if key_mgmt.split(' ')[0] != "WPA-PSK":
-        raise Exception("Unexpected GET_CONFIG(key_mgmt): " + key_mgmt)
+        raise Exception(f"Unexpected GET_CONFIG(key_mgmt): {key_mgmt}")
     dev[0].connect(ssid, psk="12345678", ieee80211w="2",
                    key_mgmt="WPA-PSK", proto="WPA2", scan_freq="2412")
     if "[WPA2-PSK-CCMP]" not in dev[0].request("SCAN_RESULTS"):
@@ -827,8 +834,10 @@ def test_ap_pmf_inject_auth(dev, apdev):
     failed = False
     addresses = [ addr, "021122334455", bssid, 6*"00", 6*"ff", 6*"01" ]
     for a in addresses:
-        auth = "b0003a01" + bssid + a + bssid + '1000000001000000'
-        res = hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % auth)
+        auth = f"b0003a01{bssid}{a}{bssid}1000000001000000"
+        res = hapd.request(
+            f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={auth}"
+        )
         if "OK" not in res:
             failed = True
     hapd.request("SET ext_mgmt_frame_handling 0")
@@ -836,8 +845,7 @@ def test_ap_pmf_inject_auth(dev, apdev):
         raise Exception("MGMT_RX_PROCESS failed")
     time.sleep(0.1)
 
-    ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=0.1)
-    if ev:
+    if ev := dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=0.1):
         raise Exception("Unexpected disconnection reported on the STA")
 
     # Verify that original association is still functional.
@@ -847,18 +855,24 @@ def test_ap_pmf_inject_auth(dev, apdev):
     # claiming to be from the set of test addresses.
     hapd.request("SET ext_mgmt_frame_handling 1")
     for a in addresses:
-        assoc = "00003a01" + bssid + a + bssid + '2000' + '31040500' + '0008746573742d706d66' + '010802040b160c121824' + '301a0100000fac040100000fac040100000fac06c0000000000fac06'
-        res = hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % assoc)
+        assoc = f"00003a01{bssid}{a}{bssid}2000310405000008746573742d706d66010802040b160c121824301a0100000fac040100000fac040100000fac06c0000000000fac06"
+        res = hapd.request(
+            f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={assoc}"
+        )
         if "OK" not in res:
             failed = True
 
-        assoc = "00003a01" + bssid + a + bssid + '2000' + '31040500' + '0008746573742d706d66' + '010802040b160c121824' + '3000'
-        res = hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % assoc)
+        assoc = f"00003a01{bssid}{a}{bssid}2000310405000008746573742d706d66010802040b160c1218243000"
+        res = hapd.request(
+            f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={assoc}"
+        )
         if "OK" not in res:
             failed = True
 
-        assoc = "00003a01" + bssid + a + bssid + '2000' + '31040500' + '0008746573742d706d66' + '010802040b160c121824'
-        res = hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % assoc)
+        assoc = f"00003a01{bssid}{a}{bssid}2000310405000008746573742d706d66010802040b160c121824"
+        res = hapd.request(
+            f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={assoc}"
+        )
         if "OK" not in res:
             failed = True
     hapd.request("SET ext_mgmt_frame_handling 0")
@@ -866,8 +880,7 @@ def test_ap_pmf_inject_auth(dev, apdev):
         raise Exception("MGMT_RX_PROCESS failed")
     time.sleep(5)
 
-    ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=0.1)
-    if ev:
+    if ev := dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=0.1):
         raise Exception("Unexpected disconnection reported on the STA")
 
     # Verify that original association is still functional.
@@ -902,12 +915,11 @@ def run_ap_pmf_inject_data(dev, apdev):
     # A2=unknown unicast
     addresses = [ 6*"ff", 6*"01", bssid, addr, "020102030405" ]
     for a in addresses:
-        frame = binascii.unhexlify("48010000" + bssid + a + bssid + "0000")
+        frame = binascii.unhexlify(f"48010000{bssid}{a}{bssid}0000")
         sock.send(radiotap + frame)
 
     time.sleep(0.1)
-    ev = dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=0.1)
-    if ev:
+    if ev := dev[0].wait_event(["CTRL-EVENT-DISCONNECTED"], timeout=0.1):
         raise Exception("Unexpected disconnection reported on the STA")
     hwsim_utils.test_connectivity(dev[0], hapd)
 
@@ -938,7 +950,7 @@ def test_ap_pmf_tkip_reject(dev, apdev):
     if "CTRL-EVENT-ASSOC-REJECT" not in ev:
         raise Exception("MFP + TKIP connection was not rejected")
     if "status_code=31" not in ev:
-        raise Exception("Unexpected status code in rejection: " + ev)
+        raise Exception(f"Unexpected status code in rejection: {ev}")
     dev[2].request("DISCONNECT")
     dev[2].dump_monitor()
 
@@ -992,26 +1004,26 @@ def check_mac80211_bigtk(dev, hapd):
     ap_key = None
 
     phy = dev.get_driver_status_field("phyname")
-    keys = "/sys/kernel/debug/ieee80211/%s/keys" % phy
+    keys = f"/sys/kernel/debug/ieee80211/{phy}/keys"
     try:
         for key in os.listdir(keys):
             keydir = os.path.join(keys, key)
             vals = mac80211_read_key(keydir)
             keyidx = int(vals['keyidx'])
-            if keyidx == 6 or keyidx == 7:
+            if keyidx in {6, 7}:
                 sta_key = vals;
                 break
     except OSError as e:
         raise HwsimSkip("debugfs not supported in mac80211 (STA)")
 
     phy = hapd.get_driver_status_field("phyname")
-    keys = "/sys/kernel/debug/ieee80211/%s/keys" % phy
+    keys = f"/sys/kernel/debug/ieee80211/{phy}/keys"
     try:
         for key in os.listdir(keys):
             keydir = os.path.join(keys, key)
             vals = mac80211_read_key(keydir)
             keyidx = int(vals['keyidx'])
-            if keyidx == 6 or keyidx == 7:
+            if keyidx in {6, 7}:
                 ap_key = vals;
                 break
     except OSError as e:
@@ -1019,11 +1031,11 @@ def check_mac80211_bigtk(dev, hapd):
 
     if not sta_key:
         raise Exception("Could not find STA key information from debugfs")
-    logger.info("STA key: " + str(sta_key))
+    logger.info(f"STA key: {str(sta_key)}")
 
     if not ap_key:
         raise Exception("Could not find AP key information from debugfs")
-    logger.info("AP key: " + str(ap_key))
+    logger.info(f"AP key: {str(ap_key)}")
 
     if sta_key['key'] != ap_key['key']:
         raise Exception("AP and STA BIGTK mismatch")
@@ -1134,8 +1146,6 @@ def run_ap_pmf_beacon_protection_mismatch(dev, apdev, clear):
     dev[0].connect(ssid, psk="12345678", ieee80211w="2", beacon_prot="1",
                    key_mgmt="WPA-PSK-SHA256", proto="WPA2", scan_freq="2412")
 
-    WPA_ALG_NONE = 0
-    WPA_ALG_IGTK = 4
     KEY_FLAG_DEFAULT = 0x02
     KEY_FLAG_TX = 0x08
     KEY_FLAG_GROUP = 0x10
@@ -1144,8 +1154,10 @@ def run_ap_pmf_beacon_protection_mismatch(dev, apdev, clear):
     addr = "ff:ff:ff:ff:ff:ff"
 
     if clear:
+        WPA_ALG_NONE = 0
         res = hapd.request("SET_KEY %d %s %d %d %s %s %d" % (WPA_ALG_NONE, addr, 6, 1, 6*"00", "", KEY_FLAG_GROUP))
     else:
+        WPA_ALG_IGTK = 4
         res = hapd.request("SET_KEY %d %s %d %d %s %s %d" % (WPA_ALG_IGTK, addr, 6, 1, 6*"00", 16*"00", KEY_FLAG_GROUP_TX_DEFAULT))
     if "OK" not in res:
         raise Exception("SET_KEY failed")
@@ -1176,7 +1188,7 @@ def test_ap_pmf_sta_global_require(dev, apdev):
                        scan_freq="2412")
         pmf = dev[0].get_status_field("pmf")
         if pmf != "1":
-            raise Exception("Unexpected PMF state: " + str(pmf))
+            raise Exception(f"Unexpected PMF state: {str(pmf)}")
     finally:
         dev[0].set("pmf", "0")
 

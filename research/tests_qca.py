@@ -35,9 +35,7 @@ class QcaDriverTest(Test):
 		self.check_fn = None
 
 	def check(self, p):
-		if self.check_fn == None:
-			return False
-		return self.check_fn(p)
+		return False if self.check_fn is None else self.check_fn(p)
 
 	def prepare(self, station):
 		log(STATUS, "Generating QCA driver test", color="green")
@@ -103,9 +101,7 @@ class QcaTestSplit(Test):
 		self.check_fn = None
 
 	def check(self, p):
-		if self.check_fn == None:
-			return False
-		return self.check_fn(p)
+		return False if self.check_fn is None else self.check_fn(p)
 
 	def prepare(self, station):
 		log(STATUS, "Generating QCA driver test", color="green")
@@ -130,13 +126,9 @@ class QcaTestSplit(Test):
 		self.actions[3].frame.TID = 6
 		self.actions[4].frame.TID = 6
 
-		# Frame to put in between them
-		if False:
-			self.actions[2].frame = station.get_header(seqnum=11, prior=4)/LLC()/SNAP()/IP()
-		else:
-			header, request, self.check_fn = generate_request(station, REQ_ICMP, prior=2)
-			header.SC = 11 << 4
-			self.actions[2].frame = header/request/Raw(b"3")
+		header, request, self.check_fn = generate_request(station, REQ_ICMP, prior=2)
+		header.SC = 11 << 4
+		self.actions[2].frame = header/request/Raw(b"3")
 
 		#self.actions[2].frame.addr3 = "ff:ff:ff:ff:ff:ff"
 
@@ -180,9 +172,7 @@ class QcaDriverRekey(Test):
 		return True
 
 	def check(self, p):
-		if self.check_fn == None:
-			return False
-		return self.check_fn(p)
+		return False if self.check_fn is None else self.check_fn(p)
 
 	def prepare(self, station):
 		log(STATUS, "Generating QCA driver test", color="green")

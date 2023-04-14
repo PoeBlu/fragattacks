@@ -48,9 +48,7 @@ class HapdRegCtrl:
 
     @staticmethod
     def channel_may_require_reg_change(chan):
-        if int(chan) > 14:
-            return True
-        return False
+        return int(chan) > 14
 
     @staticmethod
     def wait_hapd_reg_change(hapd):
@@ -59,9 +57,8 @@ class HapdRegCtrl:
             state = hapd.get_status_field("state")
             if state != "ENABLED":
                 raise Exception("Unexpected interface state - expected COUNTRY_UPDATE")
-            else:
-                logger.debug("fst hostapd: regulatory domain already set")
-                return True
+            logger.debug("fst hostapd: regulatory domain already set")
+            return True
 
         logger.debug("fst hostapd: waiting for regulatory domain to be set...")
 

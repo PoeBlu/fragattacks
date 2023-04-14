@@ -14,32 +14,30 @@ import hostapd
 from utils import *
 
 def connect(dev, apdev, scan_freq="2412", **kwargs):
-    params = {"ssid": "ap-csa",
-              "channel": "1"}
-    params.update(kwargs)
+    params = {"ssid": "ap-csa", "channel": "1"} | kwargs
     ap = hostapd.add_ap(apdev[0], params)
     dev.connect("ap-csa", key_mgmt="NONE", scan_freq=scan_freq)
     return ap
 
 def switch_channel(ap, count, freq):
-    ap.request("CHAN_SWITCH " + str(count) + " " + str(freq))
+    ap.request(f"CHAN_SWITCH {str(count)} {str(freq)}")
 
     ev = ap.wait_event(["CTRL-EVENT-STARTED-CHANNEL-SWITCH"], timeout=10)
     if ev is None:
         raise Exception("Channel switch start event not seen")
-    if "freq=" + str(freq) not in ev:
+    if f"freq={str(freq)}" not in ev:
         raise Exception("Unexpected channel in CS started event")
 
     ev = ap.wait_event(["CTRL-EVENT-CHANNEL-SWITCH"], timeout=10)
     if ev is None:
         raise Exception("Channel switch completed event not seen")
-    if "freq=" + str(freq) not in ev:
+    if f"freq={str(freq)}" not in ev:
         raise Exception("Unexpected channel in CS completed event")
 
     ev = ap.wait_event(["AP-CSA-FINISHED"], timeout=10)
     if ev is None:
         raise Exception("CSA finished event timed out")
-    if "freq=" + str(freq) not in ev:
+    if f"freq={str(freq)}" not in ev:
         raise Exception("Unexpected channel in CSA finished event")
 
 def wait_channel_switch(dev, freq):
@@ -47,13 +45,13 @@ def wait_channel_switch(dev, freq):
     if ev is None:
         raise Exception("Channel switch start not reported")
     if "freq=%d" % freq not in ev:
-        raise Exception("Unexpected frequency in channel switch started: " + ev)
+        raise Exception(f"Unexpected frequency in channel switch started: {ev}")
 
     ev = dev.wait_event(["CTRL-EVENT-CHANNEL-SWITCH"], timeout=5)
     if ev is None:
         raise Exception("Channel switch not reported")
     if "freq=%d" % freq not in ev:
-        raise Exception("Unexpected frequency: " + ev)
+        raise Exception(f"Unexpected frequency: {ev}")
 
 @remote_compatible
 def test_ap_csa_1_switch(dev, apdev):

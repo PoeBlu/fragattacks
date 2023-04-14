@@ -345,13 +345,13 @@ def build_nl80211_attr_mac(id, val):
 def parse_nl80211_attrs(msg):
     attrs = {}
     while len(msg) >= 4:
-        alen, attr = struct.unpack("@HH", msg[0:4])
+        alen, attr = struct.unpack("@HH", msg[:4])
         if alen < 4:
             raise Exception("Too short nl80211 attribute")
         alen -= 4
         msg = msg[4:]
         if alen > len(msg):
             raise Exception("nl80211 attribute underflow")
-        attrs[attr] = msg[0:alen]
+        attrs[attr] = msg[:alen]
         msg = msg[alen:]
     return attrs

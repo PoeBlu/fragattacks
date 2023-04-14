@@ -25,23 +25,18 @@ from test_rrm import check_beacon_req
 from test_suite_b import check_suite_b_192_capa
 
 def ft_base_rsn():
-    params = {"wpa": "2",
-              "wpa_key_mgmt": "FT-PSK",
-              "rsn_pairwise": "CCMP"}
-    return params
+    return {"wpa": "2", "wpa_key_mgmt": "FT-PSK", "rsn_pairwise": "CCMP"}
 
 def ft_base_mixed():
-    params = {"wpa": "3",
-              "wpa_key_mgmt": "WPA-PSK FT-PSK",
-              "wpa_pairwise": "TKIP",
-              "rsn_pairwise": "CCMP"}
-    return params
+    return {
+        "wpa": "3",
+        "wpa_key_mgmt": "WPA-PSK FT-PSK",
+        "wpa_pairwise": "TKIP",
+        "rsn_pairwise": "CCMP",
+    }
 
 def ft_params(rsn=True, ssid=None, passphrase=None):
-    if rsn:
-        params = ft_base_rsn()
-    else:
-        params = ft_base_mixed()
+    params = ft_base_rsn() if rsn else ft_base_mixed()
     if ssid:
         params["ssid"] = ssid
     if passphrase:
@@ -139,13 +134,14 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
               wait_before_roam=0, return_after_initial=False, ieee80211w="1"):
     logger.info("Connect to first AP")
 
-    copts = {}
-    copts["proto"] = "WPA2"
-    copts["ieee80211w"] = ieee80211w
-    copts["scan_freq"] = "2412"
-    copts["pairwise"] = pairwise_cipher
-    copts["group"] = group_cipher
-    copts["wpa_ptk_rekey"] = ptk_rekey
+    copts = {
+        "proto": "WPA2",
+        "ieee80211w": ieee80211w,
+        "scan_freq": "2412",
+        "pairwise": pairwise_cipher,
+        "group": group_cipher,
+        "wpa_ptk_rekey": ptk_rekey,
+    }
     if group_mgmt:
         copts["group_mgmt"] = group_mgmt
     if ocv:
@@ -217,7 +213,7 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
         time.sleep(wait_before_roam)
     dev.scan_for_bss(ap2['bssid'], freq="2412")
 
-    for i in range(0, roams):
+    for i in range(roams):
         # Roaming artificially fast can make data test fail because the key is
         # set later.
         time.sleep(0.01)
@@ -234,7 +230,7 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
             return
         if dev.get_status_field('bssid') != ap2['bssid']:
             raise Exception("Did not connect to correct AP")
-        if (i == 0 or i == roams - 1) and test_connectivity:
+        if i in [0, roams - 1] and test_connectivity:
             hapd2ap.wait_sta()
             if conndev:
                 hwsim_utils.test_connectivity_iface(dev, hapd2ap, conndev)
@@ -257,7 +253,7 @@ def run_roams(dev, apdev, hapd0, hapd1, ssid, passphrase, over_ds=False,
             dev.roam(ap1['bssid'])
         if dev.get_status_field('bssid') != ap1['bssid']:
             raise Exception("Did not connect to correct AP")
-        if (i == 0 or i == roams - 1) and test_connectivity:
+        if i in [0, roams - 1] and test_connectivity:
             hapd1ap.wait_sta()
             if conndev:
                 hwsim_utils.test_connectivity_iface(dev, hapd1ap, conndev)
@@ -451,7 +447,7 @@ def test_ap_ft_mixed(dev, apdev):
     key_mgmt = hapd.get_config()['key_mgmt']
     vals = key_mgmt.split(' ')
     if vals[0] != "WPA-PSK" or vals[1] != "FT-PSK":
-        raise Exception("Unexpected GET_CONFIG(key_mgmt): " + key_mgmt)
+        raise Exception(f"Unexpected GET_CONFIG(key_mgmt): {key_mgmt}")
     params = ft_params2(rsn=False, ssid=ssid, passphrase=passphrase)
     hapd1 = hostapd.add_ap(apdev[1], params)
 
@@ -534,7 +530,7 @@ def test_ap_ft_pmf_bip_cmac_256(dev, apdev):
 
 def run_ap_ft_pmf_bip(dev, apdev, cipher):
     if cipher not in dev[0].get_capability("group_mgmt"):
-        raise HwsimSkip("Cipher %s not supported" % cipher)
+        raise HwsimSkip(f"Cipher {cipher} not supported")
 
     ssid = "test-ft"
     passphrase = "12345678"

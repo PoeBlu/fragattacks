@@ -34,13 +34,20 @@ class AmsduInject(Test):
 			src = station.bss
 
 		# Put the request inside an IP packet
-		if not self.malformed:
-			p = header/LLC()/SNAP()/IP(dst="192.168.1.2", src="1.2.3.4", id=34)/TCP()
-
-		# This works against linux 4.9 and above and against FreeBSD
-		else:
-			p = header/LLC()/SNAP()/IP(dst="192.168.1.2", src="3.5.1.1")/TCP()/Raw(b"A" * 748)
-
+		p = (
+			header
+			/ LLC()
+			/ SNAP()
+			/ IP(dst="192.168.1.2", src="3.5.1.1")
+			/ TCP()
+			/ Raw(b"A" * 748)
+			if self.malformed
+			else header
+			/ LLC()
+			/ SNAP()
+			/ IP(dst="192.168.1.2", src="1.2.3.4", id=34)
+			/ TCP()
+		)
 		p = p/create_msdu_subframe(src, dst, request, last=True)
 		set_amsdu(p[Dot11QoS])
 

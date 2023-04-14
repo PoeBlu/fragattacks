@@ -17,14 +17,14 @@ class PingTest(Test):
 		self.ptype = ptype
 		self.separate_with = separate_with
 
-		self.bcast_ra = False if opt == None else opt.bcast_ra
-		self.bcast_dst = False if opt == None else opt.bcast_dst
-		self.as_msdu = False if opt == None else opt.as_msdu
-		self.icmp_size = None if opt == None else opt.icmp_size
-		self.padding = None if opt == None else opt.padding
-		self.to_self = False if opt == None else opt.to_self
-		self.bad_mic = False if opt == None else opt.bad_mic
-		self.dport = None if opt == None else opt.udp
+		self.bcast_ra = False if opt is None else opt.bcast_ra
+		self.bcast_dst = False if opt is None else opt.bcast_dst
+		self.as_msdu = False if opt is None else opt.as_msdu
+		self.icmp_size = None if opt is None else opt.icmp_size
+		self.padding = None if opt is None else opt.padding
+		self.to_self = False if opt is None else opt.to_self
+		self.bad_mic = False if opt is None else opt.bad_mic
+		self.dport = None if opt is None else opt.udp
 
 		self.parse_meta_actions()
 
@@ -49,11 +49,11 @@ class PingTest(Test):
 
 		# Generate the header and payload
 		header, request, check_fn = generate_request(station, self.ptype, icmp_size=self.icmp_size, \
-						padding=self.padding, to_self=self.to_self, dport=self.dport)
+							padding=self.padding, to_self=self.to_self, dport=self.dport)
 
 		# We can automatically detect the result if the last fragment was sent after a connected event.
 		# Note we might get a reply during a rekey handshake, and this will be handled properly.
-		if any([act.trigger >= Action.AfterAuth for act in self.actions]):
+		if any(act.trigger >= Action.AfterAuth for act in self.actions):
 			self.check_fn = check_fn
 
 		if self.as_msdu == 1:
@@ -74,11 +74,11 @@ class PingTest(Test):
 			if self.bcast_ra:
 				frame.addr1 = "ff:ff:ff:ff:ff:ff"
 			if self.bcast_dst:
-				if header.FCfield & Dot11(FCfield="to-DS").FCfield != 0:
-					frame.addr3 = "ff:ff:ff:ff:ff:ff"
-				else:
+				if header.FCfield & Dot11(FCfield="to-DS").FCfield == 0:
 					frame.addr1 = "ff:ff:ff:ff:ff:ff"
 
+				else:
+					frame.addr3 = "ff:ff:ff:ff:ff:ff"
 			# Set fragment number and MoreFragment flags according to parsed MetaDrop rules
 			fraginfo = self.fraginfos.pop(0)
 			frame.SC = (frame.SC & 0xfff0) | fraginfo.num
@@ -128,7 +128,7 @@ class ForwardTest(Test):
 		if header.FCfield & Dot11(FCfield="to-DS").FCfield == 0:
 			log(ERROR, "It makes no sense to test whether a client forwards frames??")
 
-		if self.dst == None:
+		if self.dst is None:
 			header.addr3 = station.mac
 			self.check_fn = lambda p: self.magic in raw(p)
 		else:
@@ -174,14 +174,7 @@ class LinuxTest(Test):
 		p = station.get_header(prior=2)/LLC()/SNAP()/IP()/Raw(b"linux-plain decoy fragment")
 		p.SC = frag2.SC ^ (1 << 4)
 
-		# - In the attack against Linux, the decoy frame must have the same QoS TID.
-		# - On the other hand, some devices seem to only cache fragments for one sequence
-		#   number per QoS priority. So to avoid overwriting the first fragment, add this
-		#   option to use a different priority for it.
-		p.TID = 2
-		if self.decoy_tid != None:
-			p.TID = 3
-
+		p.TID = 3 if self.decoy_tid != None else 2
 		self.actions[1].frame = p
 
 		# Fragment 3: can now inject last fragment as plaintext
@@ -222,9 +215,9 @@ class EapolAmsduTest(Test):
 		super().__init__(actions)
 		self.ptype = ptype
 		self.freebsd = freebsd
-		self.bcast_dst = False if opt == None else opt.bcast_dst
+		self.bcast_dst = False if opt is None else opt.bcast_dst
 		#TODO: More automatically control ptype and its arguments
-		self.dport = None if opt == None else opt.udp
+		self.dport = None if opt is None else opt.udp
 
 		actions = self.get_actions(Action.Inject)
 		if len(actions) != 1:
@@ -241,7 +234,7 @@ class EapolAmsduTest(Test):
 
 		# We can automatically detect the result if the last fragment was sent after a connected event.
 		# Note we might get a reply during a rekey handshake, and this will be handled properly.
-		if any([act.trigger >= Action.AfterAuth for act in self.actions]):
+		if any(act.trigger >= Action.AfterAuth for act in self.actions):
 			self.check_fn = check_fn
 
 		mac_src = station.mac
@@ -259,7 +252,6 @@ class EapolAmsduTest(Test):
 		frames = create_fragments(header, request, 1)
 		toinject = frames[0]
 
-		# Make sure addr1/3 matches the destination address in the A-MSDU subframe(s)
 		if self.bcast_dst:
 			if toinject.FCfield & Dot11(FCfield="to-DS").FCfield != 0:
 				toinject.addr3 = "ff:ff:ff:ff:ff:ff"

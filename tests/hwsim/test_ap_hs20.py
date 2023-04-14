@@ -69,8 +69,8 @@ def interworking_select(dev, bssid, type=None, no_match=False, freq=None):
     dev.dump_monitor()
     if bssid and freq and not no_match:
         dev.scan_for_bss(bssid, freq=freq)
-    freq_extra = " freq=" + str(freq) if freq else ""
-    dev.request("INTERWORKING_SELECT" + freq_extra)
+    freq_extra = f" freq={str(freq)}" if freq else ""
+    dev.request(f"INTERWORKING_SELECT{freq_extra}")
     ev = dev.wait_event(["INTERWORKING-AP", "INTERWORKING-NO-MATCH"],
                         timeout=15)
     if ev is None:
@@ -82,16 +82,16 @@ def interworking_select(dev, bssid, type=None, no_match=False, freq=None):
     if "INTERWORKING-NO-MATCH" in ev:
         logger.info("Matching network not found - try again")
         dev.dump_monitor()
-        dev.request("INTERWORKING_SELECT" + freq_extra)
+        dev.request(f"INTERWORKING_SELECT{freq_extra}")
         ev = dev.wait_event(["INTERWORKING-AP", "INTERWORKING-NO-MATCH"],
                             timeout=15)
         if ev is None:
             raise Exception("Network selection timed out")
-        if "INTERWORKING-NO-MATCH" in ev:
-            raise Exception("Matching network not found")
+    if "INTERWORKING-NO-MATCH" in ev:
+        raise Exception("Matching network not found")
     if bssid and bssid not in ev:
         raise Exception("Unexpected BSSID in match")
-    if type and "type=" + type not in ev:
+    if type and f"type={type}" not in ev:
         raise Exception("Network type not recognized correctly")
 
 def check_sp_type(dev, sp_type):
@@ -99,7 +99,7 @@ def check_sp_type(dev, sp_type):
     if type is None:
         raise Exception("sp_type not available")
     if type != sp_type:
-        raise Exception("sp_type did not indicate %s network" % sp_type)
+        raise Exception(f"sp_type did not indicate {sp_type} network")
 
 def hlr_auc_gw_available():
     if not os.path.exists("/tmp/hlr_auc_gw.sock"):
@@ -108,14 +108,14 @@ def hlr_auc_gw_available():
         raise HwsimSkip("No hlr_auc_gw available")
 
 def interworking_ext_sim_connect(dev, bssid, method):
-    dev.request("INTERWORKING_CONNECT " + bssid)
+    dev.request(f"INTERWORKING_CONNECT {bssid}")
     interworking_ext_sim_auth(dev, method)
 
 def interworking_ext_sim_auth(dev, method):
     ev = dev.wait_event(["CTRL-EVENT-EAP-METHOD"], timeout=15)
     if ev is None:
         raise Exception("Network connected timed out")
-    if "(" + method + ")" not in ev:
+    if f"({method})" not in ev:
         raise Exception("Unexpected EAP method selection")
 
     ev = dev.wait_event(["CTRL-REQ-SIM"], timeout=15)
@@ -127,26 +127,30 @@ def interworking_ext_sim_auth(dev, method):
     id = p[0].split('-')[3]
     rand = p[2].split(' ')[0]
 
-    res = subprocess.check_output(["../../hostapd/hlr_auc_gw",
-                                   "-m",
-                                   "auth_serv/hlr_auc_gw.milenage_db",
-                                   "GSM-AUTH-REQ 232010000000000 " + rand]).decode()
+    res = subprocess.check_output(
+        [
+            "../../hostapd/hlr_auc_gw",
+            "-m",
+            "auth_serv/hlr_auc_gw.milenage_db",
+            f"GSM-AUTH-REQ 232010000000000 {rand}",
+        ]
+    ).decode()
     if "GSM-AUTH-RESP" not in res:
         raise Exception("Unexpected hlr_auc_gw response")
     resp = res.split(' ')[2].rstrip()
 
-    dev.request("CTRL-RSP-SIM-" + id + ":GSM-AUTH:" + resp)
+    dev.request(f"CTRL-RSP-SIM-{id}:GSM-AUTH:{resp}")
     dev.wait_connected(timeout=15)
 
 def interworking_connect(dev, bssid, method):
-    dev.request("INTERWORKING_CONNECT " + bssid)
+    dev.request(f"INTERWORKING_CONNECT {bssid}")
     interworking_auth(dev, method)
 
 def interworking_auth(dev, method):
     ev = dev.wait_event(["CTRL-EVENT-EAP-METHOD"], timeout=15)
     if ev is None:
         raise Exception("Network connected timed out")
-    if "(" + method + ")" not in ev:
+    if f"({method})" not in ev:
         raise Exception("Unexpected EAP method selection")
 
     dev.wait_connected(timeout=15)
@@ -189,7 +193,7 @@ def test_ap_anqp_sharing(dev, apdev):
     dev[0].dump_monitor()
     state = dev[0].get_status_field('wpa_state')
     if state != "DISCONNECTED":
-        raise Exception("Unexpected wpa_state after INTERWORKING_SELECT: " + state)
+        raise Exception(f"Unexpected wpa_state after INTERWORKING_SELECT: {state}")
 
     logger.debug("BSS entries:\n" + dev[0].request("BSS RANGE=ALL"))
     res1 = dev[0].get_bss(bssid)
@@ -202,12 +206,12 @@ def test_ap_anqp_sharing(dev, apdev):
         raise Exception("ANQP results were not shared between BSSes")
 
     logger.info("Explicit ANQP request to unshare ANQP results")
-    dev[0].request("ANQP_GET " + bssid + " 263")
+    dev[0].request(f"ANQP_GET {bssid} 263")
     ev = dev[0].wait_event(["RX-ANQP"], timeout=5)
     if ev is None:
         raise Exception("ANQP operation timed out")
 
-    dev[0].request("ANQP_GET " + bssid2 + " 263")
+    dev[0].request(f"ANQP_GET {bssid2} 263")
     ev = dev[0].wait_event(["RX-ANQP"], timeout=5)
     if ev is None:
         raise Exception("ANQP operation timed out")
@@ -322,7 +326,7 @@ def test_ap_anqp_sharing_oom(dev, apdev):
     dev[0].dump_monitor()
 
     with alloc_fail(dev[0], 1, "wpa_bss_anqp_clone"):
-        dev[0].request("ANQP_GET " + bssid + " 263")
+        dev[0].request(f"ANQP_GET {bssid} 263")
         ev = dev[0].wait_event(["RX-ANQP"], timeout=5)
         if ev is None:
             raise Exception("ANQP operation timed out")
@@ -337,14 +341,14 @@ def test_ap_nai_home_realm_query(dev, apdev):
     hostapd.add_ap(apdev[0], params)
 
     dev[0].scan(freq="2412")
-    dev[0].request("HS20_GET_NAI_HOME_REALM_LIST " + bssid + " realm=example.com")
+    dev[0].request(f"HS20_GET_NAI_HOME_REALM_LIST {bssid} realm=example.com")
     ev = dev[0].wait_event(["RX-ANQP"], timeout=5)
     if ev is None:
         raise Exception("ANQP operation timed out")
     nai1 = dev[0].get_bss(bssid)['anqp_nai_realm']
     dev[0].dump_monitor()
 
-    dev[0].request("ANQP_GET " + bssid + " 263")
+    dev[0].request(f"ANQP_GET {bssid} 263")
     ev = dev[0].wait_event(["RX-ANQP"], timeout=5)
     if ev is None:
         raise Exception("ANQP operation timed out")
@@ -365,39 +369,41 @@ def test_ap_nai_home_realm_query(dev, apdev):
             "00:11:22:33:44:55 123",
             "00:11:22:33:44:55 qq"]
     for cmd in cmds:
-        if "FAIL" not in dev[0].request("HS20_GET_NAI_HOME_REALM_LIST " + cmd):
-            raise Exception("Invalid HS20_GET_NAI_HOME_REALM_LIST accepted: " + cmd)
+        if "FAIL" not in dev[0].request(f"HS20_GET_NAI_HOME_REALM_LIST {cmd}"):
+            raise Exception(f"Invalid HS20_GET_NAI_HOME_REALM_LIST accepted: {cmd}")
 
     dev[0].dump_monitor()
-    if "OK" not in dev[0].request("HS20_GET_NAI_HOME_REALM_LIST " + bssid):
+    if "OK" not in dev[0].request(f"HS20_GET_NAI_HOME_REALM_LIST {bssid}"):
         raise Exception("HS20_GET_NAI_HOME_REALM_LIST failed")
     ev = dev[0].wait_event(["GAS-QUERY-DONE"], timeout=10)
     if ev is None:
         raise Exception("ANQP operation timed out")
     ev = dev[0].wait_event(["RX-ANQP"], timeout=0.1)
     if ev is not None:
-        raise Exception("Unexpected ANQP response: " + ev)
+        raise Exception(f"Unexpected ANQP response: {ev}")
 
     dev[0].dump_monitor()
-    if "OK" not in dev[0].request("HS20_GET_NAI_HOME_REALM_LIST " + bssid + " 01000b6578616d706c652e636f6d"):
+    if "OK" not in dev[0].request(
+        f"HS20_GET_NAI_HOME_REALM_LIST {bssid} 01000b6578616d706c652e636f6d"
+    ):
         raise Exception("HS20_GET_NAI_HOME_REALM_LIST failed")
     ev = dev[0].wait_event(["RX-ANQP"], timeout=10)
     if ev is None:
         raise Exception("No ANQP response")
     if "NAI Realm list" not in ev:
-        raise Exception("Missing NAI Realm list: " + ev)
+        raise Exception(f"Missing NAI Realm list: {ev}")
 
     dev[0].add_cred_values({'realm': "example.com", 'username': "test",
                             'password': "secret",
                             'domain': "example.com"})
     dev[0].dump_monitor()
-    if "OK" not in dev[0].request("HS20_GET_NAI_HOME_REALM_LIST " + bssid):
+    if "OK" not in dev[0].request(f"HS20_GET_NAI_HOME_REALM_LIST {bssid}"):
         raise Exception("HS20_GET_NAI_HOME_REALM_LIST failed")
     ev = dev[0].wait_event(["RX-ANQP"], timeout=10)
     if ev is None:
         raise Exception("No ANQP response")
     if "NAI Realm list" not in ev:
-        raise Exception("Missing NAI Realm list: " + ev)
+        raise Exception(f"Missing NAI Realm list: {ev}")
 
 @remote_compatible
 def test_ap_interworking_scan_filtering(dev, apdev):
@@ -441,7 +447,7 @@ def _test_ap_interworking_scan_filtering(dev, apdev):
 
     logger.info("Check probe request filtering based on HESSID")
 
-    dev[0].request("SET hessid " + bssid2)
+    dev[0].request(f"SET hessid {bssid2}")
     dev[0].scan(freq="2412")
     time.sleep(0.03)
     check_probe_resp(wt, bssid, bssid2)
@@ -468,7 +474,7 @@ def _test_ap_interworking_scan_filtering(dev, apdev):
 
     wt.clear_bss_counters(bssid)
     wt.clear_bss_counters(bssid2)
-    dev[0].request("SET hessid " + bssid)
+    dev[0].request(f"SET hessid {bssid}")
     dev[0].request("SET access_network_type 14")
     dev[0].scan(freq="2412")
     time.sleep(0.03)
@@ -476,7 +482,7 @@ def _test_ap_interworking_scan_filtering(dev, apdev):
 
     wt.clear_bss_counters(bssid)
     wt.clear_bss_counters(bssid2)
-    dev[0].request("SET hessid " + bssid2)
+    dev[0].request(f"SET hessid {bssid2}")
     dev[0].request("SET access_network_type 14")
     dev[0].scan(freq="2412")
     time.sleep(0.03)
@@ -485,7 +491,7 @@ def _test_ap_interworking_scan_filtering(dev, apdev):
 
     wt.clear_bss_counters(bssid)
     wt.clear_bss_counters(bssid2)
-    dev[0].request("SET hessid " + bssid)
+    dev[0].request(f"SET hessid {bssid}")
     dev[0].request("SET access_network_type 1")
     dev[0].scan(freq="2412")
     time.sleep(0.03)
@@ -516,7 +522,7 @@ def test_ap_hs20_select(dev, apdev):
 
     res = dev[0].request("SCAN_RESULTS")
     if "[HS20]" not in res:
-        raise Exception("HS20 flag missing from scan results: " + res)
+        raise Exception(f"HS20 flag missing from scan results: {res}")
 
     bssid2 = apdev[1]['bssid']
     params = hs20_ap_params()
@@ -587,11 +593,11 @@ def test_ap_hs20_sim_oom(dev, apdev):
     interworking_select(dev[0], bssid, freq="2412")
 
     with alloc_fail(dev[0], 1, "wpa_config_add_network;interworking_connect_3gpp"):
-        dev[0].request("INTERWORKING_CONNECT " + bssid)
+        dev[0].request(f"INTERWORKING_CONNECT {bssid}")
         wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
 
     with alloc_fail(dev[0], 1, "=interworking_connect_3gpp"):
-        dev[0].request("INTERWORKING_CONNECT " + bssid)
+        dev[0].request(f"INTERWORKING_CONNECT {bssid}")
         wait_fail_trigger(dev[0], "GET_ALLOC_FAIL")
 
 def test_ap_hs20_aka(dev, apdev):
@@ -748,7 +754,7 @@ def test_ap_hs20_auto_interworking_global_pmf(dev, apdev):
         dev[0].wait_connected(timeout=15)
         pmf = dev[0].get_status_field("pmf")
         if pmf != "1":
-            raise Exception("Unexpected PMF state: " + str(pmf))
+            raise Exception(f"Unexpected PMF state: {str(pmf)}")
     finally:
         dev[0].set("pmf", "0")
 
@@ -771,7 +777,7 @@ def test_ap_hs20_auto_interworking_global_pmf_fail(dev, apdev):
     try:
         dev[0].set("pmf", "2")
         dev[0].request("REASSOCIATE")
-        for i in range(2):
+        for _ in range(2):
             ev = dev[0].wait_event(["CTRL-EVENT-CONNECTED",
                                     "INTERWORKING-SELECTED"], timeout=15)
             if ev is None:
@@ -790,7 +796,7 @@ def test_ap_hs20_auto_interworking_no_match(dev, apdev):
     dev[0].hs20_enable(auto_interworking=True)
     id = dev[0].connect("mismatch", psk="12345678", scan_freq="2412",
                         only_add_network=True)
-    dev[0].request("ENABLE_NETWORK " + str(id) + " no-connect")
+    dev[0].request(f"ENABLE_NETWORK {str(id)} no-connect")
 
     id = dev[0].add_cred_values({'realm': "example.com",
                                  'username': "hs20-test",
@@ -801,14 +807,14 @@ def test_ap_hs20_auto_interworking_no_match(dev, apdev):
     dev[0].request("INTERWORKING_SELECT auto freq=2412")
     time.sleep(0.1)
     dev[0].dump_monitor()
-    for i in range(5):
+    for _ in range(5):
         logger.info("start ping")
         if "PONG" not in dev[0].ctrl.request("PING", timeout=2):
             raise Exception("PING failed")
         logger.info("ping done")
         fetch = 0
         scan = 0
-        for j in range(15):
+        for _ in range(15):
             ev = dev[0].wait_event(["ANQP fetch completed",
                                     "CTRL-EVENT-SCAN-RESULTS"], timeout=0.05)
             if ev is None:
@@ -837,9 +843,9 @@ def test_ap_hs20_auto_interworking_no_cred_match(dev, apdev):
                             'domain': "example.com"})
 
     id = dev[0].connect("test", psk="12345678", only_add_network=True)
-    dev[0].request("ENABLE_NETWORK %s" % id)
+    dev[0].request(f"ENABLE_NETWORK {id}")
     logger.info("Verify that scanning continues when there is partial network block match")
-    for i in range(0, 2):
+    for _ in range(2):
         ev = dev[0].wait_event(["CTRL-EVENT-SCAN-RESULTS"], 10)
         if ev is None:
             raise Exception("Scan timed out")
@@ -848,7 +854,7 @@ def test_ap_hs20_auto_interworking_no_cred_match(dev, apdev):
 def eap_test(dev, ap, eap_params, method, user, release=0):
     bssid = ap['bssid']
     params = hs20_ap_params()
-    params['nai_realm'] = ["0,example.com," + eap_params]
+    params['nai_realm'] = [f"0,example.com,{eap_params}"]
     if release > 0:
         params['hs20_release'] = str(release)
     hapd = hostapd.add_ap(ap, params)
@@ -1440,7 +1446,7 @@ def test_ap_hs20_gas_while_associated(dev, apdev):
 
     logger.info("Verifying GAS query while associated")
     dev[0].request("FETCH_ANQP")
-    for i in range(0, 6):
+    for _ in range(6):
         ev = dev[0].wait_event(["RX-ANQP"], timeout=5)
         if ev is None:
             raise Exception("Operation timed out")
@@ -1470,7 +1476,7 @@ def test_ap_hs20_gas_with_another_ap_while_associated(dev, apdev):
     dev[0].dump_monitor()
 
     logger.info("Verifying GAS query with same AP while associated")
-    dev[0].request("ANQP_GET " + bssid + " 263")
+    dev[0].request(f"ANQP_GET {bssid} 263")
     ev = dev[0].wait_event(["RX-ANQP"], timeout=5)
     if ev is None:
         raise Exception("ANQP operation timed out")
@@ -1478,7 +1484,7 @@ def test_ap_hs20_gas_with_another_ap_while_associated(dev, apdev):
 
     logger.info("Verifying GAS query with another AP while associated")
     dev[0].scan_for_bss(bssid2, 2412)
-    dev[0].request("ANQP_GET " + bssid2 + " 263")
+    dev[0].request(f"ANQP_GET {bssid2} 263")
     ev = dev[0].wait_event(["RX-ANQP"], timeout=5)
     if ev is None:
         raise Exception("ANQP operation timed out")
@@ -1516,7 +1522,7 @@ def _test_ap_hs20_gas_while_associated_with_pmf(dev, apdev):
 
     logger.info("Verifying GAS query while associated")
     dev[0].request("FETCH_ANQP")
-    for i in range(0, 2 * 6):
+    for _ in range(2 * 6):
         ev = dev[0].wait_event(["RX-ANQP"], timeout=5)
         if ev is None:
             raise Exception("Operation timed out")
@@ -1554,7 +1560,7 @@ def _test_ap_hs20_gas_with_another_ap_while_using_pmf(dev, apdev):
     hapd.wait_sta()
 
     logger.info("Verifying GAS query with same AP while associated")
-    dev[0].request("ANQP_GET " + bssid + " 263")
+    dev[0].request(f"ANQP_GET {bssid} 263")
     ev = dev[0].wait_event(["RX-ANQP"], timeout=5)
     if ev is None:
         raise Exception("ANQP operation timed out")
@@ -1562,7 +1568,7 @@ def _test_ap_hs20_gas_with_another_ap_while_using_pmf(dev, apdev):
 
     logger.info("Verifying GAS query with another AP while associated")
     dev[0].scan_for_bss(bssid2, 2412)
-    dev[0].request("ANQP_GET " + bssid2 + " 263")
+    dev[0].request(f"ANQP_GET {bssid2} 263")
     ev = dev[0].wait_event(["RX-ANQP"], timeout=5)
     if ev is None:
         raise Exception("ANQP operation timed out")
@@ -1588,7 +1594,7 @@ def test_ap_hs20_gas_frag_while_associated(dev, apdev):
 
     logger.info("Verifying GAS query while associated")
     dev[0].request("FETCH_ANQP")
-    for i in range(0, 6):
+    for _ in range(6):
         ev = dev[0].wait_event(["RX-ANQP"], timeout=5)
         if ev is None:
             raise Exception("Operation timed out")
@@ -1611,7 +1617,7 @@ def test_ap_hs20_multiple_connects(dev, apdev):
 
     dev[0].scan_for_bss(bssid, freq="2412")
 
-    for i in range(0, 3):
+    for i in range(3):
         logger.info("Starting Interworking network selection")
         dev[0].request("INTERWORKING_SELECT auto freq=2412")
         while True:
@@ -1672,7 +1678,7 @@ def test_ap_hs20_disallow_aps(dev, apdev):
     interworking_select(dev[0], bssid, "home", freq="2412")
 
     dev[0].request("SET disallow_aps bssid " + bssid.replace(':', ''))
-    ret = dev[0].request("INTERWORKING_CONNECT " + bssid)
+    ret = dev[0].request(f"INTERWORKING_CONNECT {bssid}")
     if "FAIL" not in ret:
         raise Exception("INTERWORKING_CONNECT to disallowed BSS not rejected")
 
@@ -1772,8 +1778,10 @@ def test_ap_hs20_req_roaming_consortium(dev, apdev):
 
     for val in ["", "1", "11", "1122", "1122334",
                 "112233445566778899aabbccddeeff00"]:
-        if "FAIL" not in dev[0].request('SET_CRED {} required_roaming_consortium {}'.format(id, val)):
-            raise Exception("Invalid roaming consortium value accepted: " + val)
+        if "FAIL" not in dev[0].request(
+            f'SET_CRED {id} required_roaming_consortium {val}'
+        ):
+            raise Exception(f"Invalid roaming consortium value accepted: {val}")
 
 def test_ap_hs20_req_roaming_consortium_no_match(dev, apdev):
     """Hotspot 2.0 required roaming consortium and no match"""
@@ -1903,7 +1911,7 @@ def test_ap_hs20_domain_suffix_match_full(dev, apdev):
     dev[0].set_cred_quoted(id, "domain_suffix_match", "no-match.example.com")
     interworking_select(dev[0], bssid, "home", freq="2412")
     dev[0].dump_monitor()
-    dev[0].request("INTERWORKING_CONNECT " + bssid)
+    dev[0].request(f"INTERWORKING_CONNECT {bssid}")
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-TLS-CERT-ERROR"])
     if ev is None:
         raise Exception("TLS certificate error not reported")
@@ -2170,7 +2178,7 @@ def check_conn_capab_selection(dev, type, missing):
     ev = dev.wait_event(["INTERWORKING-AP"])
     if ev is None:
         raise Exception("Network selection timed out")
-    if "type=" + type not in ev:
+    if f"type={type}" not in ev:
         raise Exception("Unexpected network type")
     if missing and "conn_capab_missing=1" not in ev:
         raise Exception("conn_capab_missing not reported")
@@ -2229,7 +2237,7 @@ def test_ap_hs20_req_conn_capab(dev, apdev):
     dev[0].set_cred(id, "req_conn_capab", "6:22")
     dev[0].scan_for_bss(bssid2, freq="2412")
     dev[0].request("INTERWORKING_SELECT freq=2412")
-    for i in range(0, 2):
+    for _ in range(2):
         ev = dev[0].wait_event(["INTERWORKING-AP"])
         if ev is None:
             raise Exception("Network selection timed out")
@@ -2285,7 +2293,7 @@ def check_bandwidth_selection(dev, type, below):
     if ev is None:
         raise Exception("Network selection timed out")
     logger.debug("BSS entries:\n" + dev.request("BSS RANGE=ALL"))
-    if "type=" + type not in ev:
+    if f"type={type}" not in ev:
         raise Exception("Unexpected network type")
     if below and "below_min_backhaul=1" not in ev:
         raise Exception("below_min_backhaul not reported")
@@ -2503,13 +2511,13 @@ def _test_ap_hs20_deauth_req_ess(dev, apdev):
     dev[0].dump_monitor()
     addr = dev[0].p2p_interface_addr()
     hapd.wait_sta()
-    hapd.request("HS20_DEAUTH_REQ " + addr + " 1 120 http://example.com/")
+    hapd.request(f"HS20_DEAUTH_REQ {addr} 1 120 http://example.com/")
     ev = dev[0].wait_event(["HS20-DEAUTH-IMMINENT-NOTICE"])
     if ev is None:
         raise Exception("Timeout on deauth imminent notice")
     if "1 120 http://example.com/" not in ev:
-        raise Exception("Unexpected deauth imminent notice: " + ev)
-    hapd.request("DEAUTHENTICATE " + addr)
+        raise Exception(f"Unexpected deauth imminent notice: {ev}")
+    hapd.request(f"DEAUTHENTICATE {addr}")
     dev[0].wait_disconnected(timeout=10)
     if "[TEMP-DISABLED]" not in dev[0].list_networks()[0]['flags']:
         raise Exception("Network not marked temporarily disabled")
@@ -2533,13 +2541,13 @@ def _test_ap_hs20_deauth_req_bss(dev, apdev):
     dev[0].dump_monitor()
     addr = dev[0].p2p_interface_addr()
     hapd.wait_sta()
-    hapd.request("HS20_DEAUTH_REQ " + addr + " 0 120 http://example.com/")
+    hapd.request(f"HS20_DEAUTH_REQ {addr} 0 120 http://example.com/")
     ev = dev[0].wait_event(["HS20-DEAUTH-IMMINENT-NOTICE"])
     if ev is None:
         raise Exception("Timeout on deauth imminent notice")
     if "0 120 http://example.com/" not in ev:
-        raise Exception("Unexpected deauth imminent notice: " + ev)
-    hapd.request("DEAUTHENTICATE " + addr + " reason=4")
+        raise Exception(f"Unexpected deauth imminent notice: {ev}")
+    hapd.request(f"DEAUTHENTICATE {addr} reason=4")
     ev = dev[0].wait_disconnected(timeout=10)
     if "reason=4" not in ev:
         raise Exception("Unexpected disconnection reason")
@@ -2594,12 +2602,14 @@ def test_ap_hs20_deauth_req_without_pmf(dev, apdev):
     dev[0].wait_connected()
     addr = dev[0].own_addr()
     hapd.wait_sta()
-    hapd.request("HS20_DEAUTH_REQ " + addr + " 1 120 http://example.com/")
+    hapd.request(f"HS20_DEAUTH_REQ {addr} 1 120 http://example.com/")
     ev = dev[0].wait_event(["HS20-DEAUTH-IMMINENT-NOTICE"], timeout=0.2)
     if ev is not None:
         raise Exception("Deauth imminent notice without PMF accepted")
     with alloc_fail(hapd, 1, "wpabuf_alloc;hostapd_ctrl_iface_hs20_deauth_req"):
-        if "FAIL" not in hapd.request("HS20_DEAUTH_REQ " + addr + " 1 120 http://example.com/"):
+        if "FAIL" not in hapd.request(
+            f"HS20_DEAUTH_REQ {addr} 1 120 http://example.com/"
+        ):
             raise Exception("HS20_DEAUTH_REQ accepted during OOM")
 
 def test_ap_hs20_deauth_req_pmf_htc(dev, apdev):
@@ -2624,11 +2634,13 @@ def run_ap_hs20_deauth_req_pmf_htc(dev, apdev):
     payload = "0a1a0101dd1b506f9a0101780013687474703a2f2f6578616d706c652e636f6d2f"
     # Claim there is a HT Control field, but then start the frame body from
     # there and do not encrypt the Robust Action frame.
-    frame = binascii.unhexlify("d0803a01" + addr + 2 * bssid + "0000" + payload)
+    frame = binascii.unhexlify(f"d0803a01{addr}" + 2 * bssid + "0000" + payload)
     # Claim there is a HT Control field and start the frame body in the correct
     # location, but do not encrypt the Robust Action frame. Make the first octet
     # of HT Control field use a non-robust Action Category value.
-    frame2 = binascii.unhexlify("d0803a01" + addr + 2 * bssid + "0000" + "04000000" + payload)
+    frame2 = binascii.unhexlify(
+        f"d0803a01{addr}" + 2 * bssid + "0000" + "04000000" + payload
+    )
 
     sock.send(radiotap + frame)
     sock.send(radiotap + frame2)
@@ -2685,27 +2697,29 @@ def _test_ap_hs20_remediation_required_ctrl(dev, apdev):
     interworking_select(dev[0], bssid, freq="2412")
     interworking_connect(dev[0], bssid, "TTLS")
 
-    hapd.request("HS20_WNM_NOTIF " + addr + " https://example.com/")
+    hapd.request(f"HS20_WNM_NOTIF {addr} https://example.com/")
     ev = dev[0].wait_event(["HS20-SUBSCRIPTION-REMEDIATION"], timeout=5)
     if ev is None:
         raise Exception("Timeout on subscription remediation notice")
     if " 1 https://example.com/" not in ev:
         raise Exception("Unexpected subscription remediation event contents")
 
-    hapd.request("HS20_WNM_NOTIF " + addr)
+    hapd.request(f"HS20_WNM_NOTIF {addr}")
     ev = dev[0].wait_event(["HS20-SUBSCRIPTION-REMEDIATION"], timeout=5)
     if ev is None:
         raise Exception("Timeout on subscription remediation notice")
     if not ev.endswith("HS20-SUBSCRIPTION-REMEDIATION "):
-        raise Exception("Unexpected subscription remediation event contents: " + ev)
+        raise Exception(f"Unexpected subscription remediation event contents: {ev}")
 
     if "FAIL" not in hapd.request("HS20_WNM_NOTIF "):
         raise Exception("Unexpected HS20_WNM_NOTIF success")
     if "FAIL" not in hapd.request("HS20_WNM_NOTIF foo"):
         raise Exception("Unexpected HS20_WNM_NOTIF success")
-    if "FAIL" not in hapd.request("HS20_WNM_NOTIF " + addr + " https://12345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678927.very.long.example.com/"):
+    if "FAIL" not in hapd.request(
+        f"HS20_WNM_NOTIF {addr} https://12345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678923456789842345678456783456712345678927.very.long.example.com/"
+    ):
         raise Exception("Unexpected HS20_WNM_NOTIF success")
-    if "OK" not in hapd.request("HS20_WNM_NOTIF " + addr + " "):
+    if "OK" not in hapd.request(f"HS20_WNM_NOTIF {addr} "):
         raise Exception("HS20_WNM_NOTIF failed with empty URL")
 
 def test_ap_hs20_session_info(dev, apdev):
@@ -2832,7 +2846,7 @@ def test_ap_hs20_network_preference(dev, apdev):
     dev[0].set_network_quoted(id, "ssid", "home")
     dev[0].set_network_quoted(id, "psk", "12345678")
     dev[0].set_network(id, "priority", "1")
-    dev[0].request("ENABLE_NETWORK %s no-connect" % id)
+    dev[0].request(f"ENABLE_NETWORK {id} no-connect")
 
     dev[0].scan_for_bss(bssid, freq="2412")
     dev[0].request("INTERWORKING_SELECT auto freq=2412")
@@ -2873,7 +2887,7 @@ def test_ap_hs20_network_preference2(dev, apdev):
     id = dev[0].add_network()
     dev[0].set_network_quoted(id, "ssid", "home")
     dev[0].set_network_quoted(id, "psk", "12345678")
-    dev[0].request("ENABLE_NETWORK %s no-connect" % id)
+    dev[0].request(f"ENABLE_NETWORK {id} no-connect")
 
     dev[0].scan_for_bss(bssid2, freq="2412")
     dev[0].request("INTERWORKING_SELECT auto freq=2412")

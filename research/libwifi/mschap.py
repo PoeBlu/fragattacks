@@ -9,14 +9,14 @@ def des_encrypt(clear, key, offset):
 	cWorking = 0
 	hexKey = {}
 
-	for x in range(0,8):
+	for x in range(8):
 		cWorking = 0xFF & key[x + offset]
 		hexKey[x] = ((cWorking >> x) | cNext | 1) & 0xFF
 		cWorking = 0xFF & key[x + offset]
 		cNext = ((cWorking << (7 - x)))
 
 	newKey = b""
-	for x in range(0, len(hexKey)):
+	for x in range(len(hexKey)):
 		newKey += struct.pack(">B", hexKey[x])
 
 	des = DES.new(newKey, DES.MODE_ECB)
@@ -24,7 +24,7 @@ def des_encrypt(clear, key, offset):
 
 def challenge_hash(peer_challenge, authenticator_challenge, username):
 	challenge = SHA.new(peer_challenge + authenticator_challenge + username).digest()
-	return challenge[0:8]
+	return challenge[:8]
 
 def nt_password_hash(password):
 	unicode_pw = password.encode("utf-16-le")
@@ -41,7 +41,7 @@ def challenge_response(challenge, pwhash):
 	pwhash += b'\x00' * (22 - len(pwhash))
 
 	response = b""
-	for x in range(0, 3):
+	for x in range(3):
 		encrypted = des_encrypt(challenge, pwhash, x * 7)
 		response += encrypted
 

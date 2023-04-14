@@ -41,47 +41,55 @@ def check_hlr_auc_gw_support():
 def check_eap_capa(dev, method):
     res = dev.get_capability("eap")
     if method not in res:
-        raise HwsimSkip("EAP method %s not supported in the build" % method)
+        raise HwsimSkip(f"EAP method {method} not supported in the build")
 
 def check_subject_match_support(dev):
     tls = dev.request("GET tls_library")
     if not tls.startswith("OpenSSL") and not tls.startswith("wolfSSL"):
-        raise HwsimSkip("subject_match not supported with this TLS library: " + tls)
+        raise HwsimSkip(f"subject_match not supported with this TLS library: {tls}")
 
 def check_check_cert_subject_support(dev):
     tls = dev.request("GET tls_library")
     if not tls.startswith("OpenSSL"):
-        raise HwsimSkip("check_cert_subject not supported with this TLS library: " + tls)
+        raise HwsimSkip(
+            f"check_cert_subject not supported with this TLS library: {tls}"
+        )
 
 def check_altsubject_match_support(dev):
     tls = dev.request("GET tls_library")
     if not tls.startswith("OpenSSL") and not tls.startswith("wolfSSL"):
-        raise HwsimSkip("altsubject_match not supported with this TLS library: " + tls)
+        raise HwsimSkip(f"altsubject_match not supported with this TLS library: {tls}")
 
 def check_domain_match(dev):
     tls = dev.request("GET tls_library")
     if tls.startswith("internal"):
-        raise HwsimSkip("domain_match not supported with this TLS library: " + tls)
+        raise HwsimSkip(f"domain_match not supported with this TLS library: {tls}")
 
 def check_domain_suffix_match(dev):
     tls = dev.request("GET tls_library")
     if tls.startswith("internal"):
-        raise HwsimSkip("domain_suffix_match not supported with this TLS library: " + tls)
+        raise HwsimSkip(
+            f"domain_suffix_match not supported with this TLS library: {tls}"
+        )
 
 def check_domain_match_full(dev):
     tls = dev.request("GET tls_library")
     if not tls.startswith("OpenSSL") and not tls.startswith("wolfSSL"):
-        raise HwsimSkip("domain_suffix_match requires full match with this TLS library: " + tls)
+        raise HwsimSkip(
+            f"domain_suffix_match requires full match with this TLS library: {tls}"
+        )
 
 def check_cert_probe_support(dev):
     tls = dev.request("GET tls_library")
     if not tls.startswith("OpenSSL") and not tls.startswith("internal"):
-        raise HwsimSkip("Certificate probing not supported with this TLS library: " + tls)
+        raise HwsimSkip(
+            f"Certificate probing not supported with this TLS library: {tls}"
+        )
 
 def check_ext_cert_check_support(dev):
     tls = dev.request("GET tls_library")
     if not tls.startswith("OpenSSL"):
-        raise HwsimSkip("ext_cert_check not supported with this TLS library: " + tls)
+        raise HwsimSkip(f"ext_cert_check not supported with this TLS library: {tls}")
 
 def check_ocsp_support(dev):
     tls = dev.request("GET tls_library")
@@ -90,17 +98,17 @@ def check_ocsp_support(dev):
     #if "BoringSSL" in tls:
     #    raise HwsimSkip("OCSP not supported with this TLS library: " + tls)
     if tls.startswith("wolfSSL"):
-        raise HwsimSkip("OCSP not supported with this TLS library: " + tls)
+        raise HwsimSkip(f"OCSP not supported with this TLS library: {tls}")
 
 def check_pkcs5_v15_support(dev):
     tls = dev.request("GET tls_library")
     if "BoringSSL" in tls or "GnuTLS" in tls:
-        raise HwsimSkip("PKCS#5 v1.5 not supported with this TLS library: " + tls)
+        raise HwsimSkip(f"PKCS#5 v1.5 not supported with this TLS library: {tls}")
 
 def check_ocsp_multi_support(dev):
     tls = dev.request("GET tls_library")
     if not tls.startswith("internal"):
-        raise HwsimSkip("OCSP-multi not supported with this TLS library: " + tls)
+        raise HwsimSkip(f"OCSP-multi not supported with this TLS library: {tls}")
     as_hapd = hostapd.Hostapd("as")
     res = as_hapd.request("GET tls_library")
     del as_hapd
@@ -112,17 +120,17 @@ def check_pkcs12_support(dev):
     #if tls.startswith("internal"):
     #    raise HwsimSkip("PKCS#12 not supported with this TLS library: " + tls)
     if tls.startswith("wolfSSL"):
-        raise HwsimSkip("PKCS#12 not supported with this TLS library: " + tls)
+        raise HwsimSkip(f"PKCS#12 not supported with this TLS library: {tls}")
 
 def check_dh_dsa_support(dev):
     tls = dev.request("GET tls_library")
     if tls.startswith("internal"):
-        raise HwsimSkip("DH DSA not supported with this TLS library: " + tls)
+        raise HwsimSkip(f"DH DSA not supported with this TLS library: {tls}")
 
 def check_ec_support(dev):
     tls = dev.request("GET tls_library")
     if tls.startswith("internal"):
-        raise HwsimSkip("EC not supported with this TLS library: " + tls)
+        raise HwsimSkip(f"EC not supported with this TLS library: {tls}")
 
 def read_pem(fname):
     with open(fname, "r") as f:
@@ -193,9 +201,8 @@ def eap_check_auth(dev, method, initial, rsn=True, sha256=False,
         ev = dev.wait_disconnected(timeout=10)
         if maybe_local_error and "locally_generated=1" in ev:
             return
-        if not local_error_report:
-            if "reason=23" not in ev:
-                raise Exception("Proper reason code for disconnection not reported")
+        if not local_error_report and "reason=23" not in ev:
+            raise Exception("Proper reason code for disconnection not reported")
         return
     if report_failure:
         ev = dev.wait_event(["CTRL-EVENT-EAP-SUCCESS",
@@ -222,7 +229,7 @@ def eap_check_auth(dev, method, initial, rsn=True, sha256=False,
     if status["suppPortStatus"] != "Authorized":
         raise Exception("Port not authorized")
     if "selectedMethod" not in status:
-        logger.info("Status: " + str(status))
+        logger.info(f"Status: {str(status)}")
         raise Exception("No selectedMethod in status")
     if method not in status["selectedMethod"]:
         raise Exception("Incorrect EAP method status")
@@ -437,7 +444,7 @@ def _test_ap_wpa2_eap_sim_ext(dev, apdev):
     # IK:CK:RES
     resp = "00112233445566778899aabbccddeeff:00112233445566778899aabbccddeeff:0011223344"
     # This will fail during processing, but the ctrl_iface command succeeds
-    dev[0].request("CTRL-RSP-SIM-" + rid + ":UMTS-AUTH:" + resp)
+    dev[0].request(f"CTRL-RSP-SIM-{rid}:UMTS-AUTH:{resp}")
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-FAILURE"], timeout=15)
     if ev is None:
         raise Exception("EAP failure not reported")
@@ -454,7 +461,7 @@ def _test_ap_wpa2_eap_sim_ext(dev, apdev):
         raise Exception("Unexpected CTRL-REQ-SIM type")
     rid = p[0].split('-')[3]
     # This will fail during GSM auth validation
-    if "OK" not in dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:q"):
+    if "OK" not in dev[0].request(f"CTRL-RSP-SIM-{rid}:GSM-AUTH:q"):
         raise Exception("CTRL-RSP-SIM failed")
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-FAILURE"], timeout=15)
     if ev is None:
@@ -472,7 +479,7 @@ def _test_ap_wpa2_eap_sim_ext(dev, apdev):
         raise Exception("Unexpected CTRL-REQ-SIM type")
     rid = p[0].split('-')[3]
     # This will fail during GSM auth validation
-    if "OK" not in dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:34"):
+    if "OK" not in dev[0].request(f"CTRL-RSP-SIM-{rid}:GSM-AUTH:34"):
         raise Exception("CTRL-RSP-SIM failed")
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-FAILURE"], timeout=15)
     if ev is None:
@@ -490,7 +497,9 @@ def _test_ap_wpa2_eap_sim_ext(dev, apdev):
         raise Exception("Unexpected CTRL-REQ-SIM type")
     rid = p[0].split('-')[3]
     # This will fail during GSM auth validation
-    if "OK" not in dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:0011223344556677"):
+    if "OK" not in dev[0].request(
+        f"CTRL-RSP-SIM-{rid}:GSM-AUTH:0011223344556677"
+    ):
         raise Exception("CTRL-RSP-SIM failed")
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-FAILURE"], timeout=15)
     if ev is None:
@@ -508,7 +517,9 @@ def _test_ap_wpa2_eap_sim_ext(dev, apdev):
         raise Exception("Unexpected CTRL-REQ-SIM type")
     rid = p[0].split('-')[3]
     # This will fail during GSM auth validation
-    if "OK" not in dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:0011223344556677:q"):
+    if "OK" not in dev[0].request(
+        f"CTRL-RSP-SIM-{rid}:GSM-AUTH:0011223344556677:q"
+    ):
         raise Exception("CTRL-RSP-SIM failed")
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-FAILURE"], timeout=15)
     if ev is None:
@@ -526,7 +537,9 @@ def _test_ap_wpa2_eap_sim_ext(dev, apdev):
         raise Exception("Unexpected CTRL-REQ-SIM type")
     rid = p[0].split('-')[3]
     # This will fail during GSM auth validation
-    if "OK" not in dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:0011223344556677:00112233"):
+    if "OK" not in dev[0].request(
+        f"CTRL-RSP-SIM-{rid}:GSM-AUTH:0011223344556677:00112233"
+    ):
         raise Exception("CTRL-RSP-SIM failed")
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-FAILURE"], timeout=15)
     if ev is None:
@@ -544,7 +557,9 @@ def _test_ap_wpa2_eap_sim_ext(dev, apdev):
         raise Exception("Unexpected CTRL-REQ-SIM type")
     rid = p[0].split('-')[3]
     # This will fail during GSM auth validation
-    if "OK" not in dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:0011223344556677:00112233:q"):
+    if "OK" not in dev[0].request(
+        f"CTRL-RSP-SIM-{rid}:GSM-AUTH:0011223344556677:00112233:q"
+    ):
         raise Exception("CTRL-RSP-SIM failed")
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-FAILURE"], timeout=15)
     if ev is None:
@@ -575,15 +590,19 @@ def _test_ap_wpa2_eap_sim_ext_replace_sim(dev, apdev):
     rid = p[0].split('-')[3]
     rand = p[2].split(' ')[0]
 
-    res = subprocess.check_output(["../../hostapd/hlr_auc_gw",
-                                   "-m",
-                                   "auth_serv/hlr_auc_gw.milenage_db",
-                                   "GSM-AUTH-REQ 232010000000000 " + rand]).decode()
+    res = subprocess.check_output(
+        [
+            "../../hostapd/hlr_auc_gw",
+            "-m",
+            "auth_serv/hlr_auc_gw.milenage_db",
+            f"GSM-AUTH-REQ 232010000000000 {rand}",
+        ]
+    ).decode()
     if "GSM-AUTH-RESP" not in res:
         raise Exception("Unexpected hlr_auc_gw response")
     resp = res.split(' ')[2].rstrip()
 
-    dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:" + resp)
+    dev[0].request(f"CTRL-RSP-SIM-{rid}:GSM-AUTH:{resp}")
     dev[0].wait_connected(timeout=15)
     dev[0].request("DISCONNECT")
     dev[0].wait_disconnected()
@@ -601,15 +620,19 @@ def _test_ap_wpa2_eap_sim_ext_replace_sim(dev, apdev):
     rid = p[0].split('-')[3]
     rand = p[2].split(' ')[0]
 
-    res = subprocess.check_output(["../../hostapd/hlr_auc_gw",
-                                   "-m",
-                                   "auth_serv/hlr_auc_gw.milenage_db",
-                                   "GSM-AUTH-REQ 232010000000009 " + rand]).decode()
+    res = subprocess.check_output(
+        [
+            "../../hostapd/hlr_auc_gw",
+            "-m",
+            "auth_serv/hlr_auc_gw.milenage_db",
+            f"GSM-AUTH-REQ 232010000000009 {rand}",
+        ]
+    ).decode()
     if "GSM-AUTH-RESP" not in res:
         raise Exception("Unexpected hlr_auc_gw response")
     resp = res.split(' ')[2].rstrip()
 
-    dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:" + resp)
+    dev[0].request(f"CTRL-RSP-SIM-{rid}:GSM-AUTH:{resp}")
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-FAILURE"], timeout=15)
     if ev is None:
         raise Exception("EAP-Failure not reported")
@@ -641,15 +664,19 @@ def _test_ap_wpa2_eap_sim_ext_replace_sim2(dev, apdev):
     rid = p[0].split('-')[3]
     rand = p[2].split(' ')[0]
 
-    res = subprocess.check_output(["../../hostapd/hlr_auc_gw",
-                                   "-m",
-                                   "auth_serv/hlr_auc_gw.milenage_db",
-                                   "GSM-AUTH-REQ 232010000000000 " + rand]).decode()
+    res = subprocess.check_output(
+        [
+            "../../hostapd/hlr_auc_gw",
+            "-m",
+            "auth_serv/hlr_auc_gw.milenage_db",
+            f"GSM-AUTH-REQ 232010000000000 {rand}",
+        ]
+    ).decode()
     if "GSM-AUTH-RESP" not in res:
         raise Exception("Unexpected hlr_auc_gw response")
     resp = res.split(' ')[2].rstrip()
 
-    dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:" + resp)
+    dev[0].request(f"CTRL-RSP-SIM-{rid}:GSM-AUTH:{resp}")
     dev[0].wait_connected(timeout=15)
     dev[0].request("DISCONNECT")
     dev[0].wait_disconnected()
@@ -668,15 +695,19 @@ def _test_ap_wpa2_eap_sim_ext_replace_sim2(dev, apdev):
     rid = p[0].split('-')[3]
     rand = p[2].split(' ')[0]
 
-    res = subprocess.check_output(["../../hostapd/hlr_auc_gw",
-                                   "-m",
-                                   "auth_serv/hlr_auc_gw.milenage_db",
-                                   "GSM-AUTH-REQ 232010000000009 " + rand]).decode()
+    res = subprocess.check_output(
+        [
+            "../../hostapd/hlr_auc_gw",
+            "-m",
+            "auth_serv/hlr_auc_gw.milenage_db",
+            f"GSM-AUTH-REQ 232010000000009 {rand}",
+        ]
+    ).decode()
     if "GSM-AUTH-RESP" not in res:
         raise Exception("Unexpected hlr_auc_gw response")
     resp = res.split(' ')[2].rstrip()
 
-    dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:" + resp)
+    dev[0].request(f"CTRL-RSP-SIM-{rid}:GSM-AUTH:{resp}")
     dev[0].wait_connected()
     dev[0].request("DISCONNECT")
     dev[0].wait_disconnected()
@@ -700,7 +731,7 @@ def _test_ap_wpa2_eap_sim_ext_replace_sim3(dev, apdev):
     if ev is None:
         raise Exception("Request for identity timed out")
     rid = ev.split(':')[0].split('-')[-1]
-    dev[0].request("CTRL-RSP-IDENTITY-" + rid + ":1232010000000000")
+    dev[0].request(f"CTRL-RSP-IDENTITY-{rid}:1232010000000000")
 
     ev = dev[0].wait_event(["CTRL-REQ-SIM"], timeout=15)
     if ev is None:
@@ -711,15 +742,19 @@ def _test_ap_wpa2_eap_sim_ext_replace_sim3(dev, apdev):
     rid = p[0].split('-')[3]
     rand = p[2].split(' ')[0]
 
-    res = subprocess.check_output(["../../hostapd/hlr_auc_gw",
-                                   "-m",
-                                   "auth_serv/hlr_auc_gw.milenage_db",
-                                   "GSM-AUTH-REQ 232010000000000 " + rand]).decode()
+    res = subprocess.check_output(
+        [
+            "../../hostapd/hlr_auc_gw",
+            "-m",
+            "auth_serv/hlr_auc_gw.milenage_db",
+            f"GSM-AUTH-REQ 232010000000000 {rand}",
+        ]
+    ).decode()
     if "GSM-AUTH-RESP" not in res:
         raise Exception("Unexpected hlr_auc_gw response")
     resp = res.split(' ')[2].rstrip()
 
-    dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:" + resp)
+    dev[0].request(f"CTRL-RSP-SIM-{rid}:GSM-AUTH:{resp}")
     dev[0].wait_connected(timeout=15)
     dev[0].request("DISCONNECT")
     dev[0].wait_disconnected()
@@ -733,7 +768,7 @@ def _test_ap_wpa2_eap_sim_ext_replace_sim3(dev, apdev):
     if ev is None:
         raise Exception("Request for identity timed out")
     rid = ev.split(':')[0].split('-')[-1]
-    dev[0].request("CTRL-RSP-IDENTITY-" + rid + ":1232010000000009")
+    dev[0].request(f"CTRL-RSP-IDENTITY-{rid}:1232010000000009")
 
     ev = dev[0].wait_event(["CTRL-REQ-SIM"], timeout=15)
     if ev is None:
@@ -744,15 +779,19 @@ def _test_ap_wpa2_eap_sim_ext_replace_sim3(dev, apdev):
     rid = p[0].split('-')[3]
     rand = p[2].split(' ')[0]
 
-    res = subprocess.check_output(["../../hostapd/hlr_auc_gw",
-                                   "-m",
-                                   "auth_serv/hlr_auc_gw.milenage_db",
-                                   "GSM-AUTH-REQ 232010000000009 " + rand]).decode()
+    res = subprocess.check_output(
+        [
+            "../../hostapd/hlr_auc_gw",
+            "-m",
+            "auth_serv/hlr_auc_gw.milenage_db",
+            f"GSM-AUTH-REQ 232010000000009 {rand}",
+        ]
+    ).decode()
     if "GSM-AUTH-RESP" not in res:
         raise Exception("Unexpected hlr_auc_gw response")
     resp = res.split(' ')[2].rstrip()
 
-    dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:" + resp)
+    dev[0].request(f"CTRL-RSP-SIM-{rid}:GSM-AUTH:{resp}")
     dev[0].wait_connected()
     dev[0].request("DISCONNECT")
     dev[0].wait_disconnected()
@@ -778,7 +817,7 @@ def _test_ap_wpa2_eap_sim_ext_auth_fail(dev, apdev):
         raise Exception("Wait for external SIM processing request timed out")
     p = ev.split(':', 2)
     rid = p[0].split('-')[3]
-    dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-FAIL")
+    dev[0].request(f"CTRL-RSP-SIM-{rid}:GSM-FAIL")
     ev = dev[0].wait_event(["CTRL-EVENT-EAP-FAILURE"], timeout=5)
     if ev is None:
         raise Exception("EAP failure not reported")
@@ -810,15 +849,19 @@ def _test_ap_wpa2_eap_sim_change_bssid(dev, apdev):
     rid = p[0].split('-')[3]
     rand = p[2].split(' ')[0]
 
-    res = subprocess.check_output(["../../hostapd/hlr_auc_gw",
-                                   "-m",
-                                   "auth_serv/hlr_auc_gw.milenage_db",
-                                   "GSM-AUTH-REQ 232010000000000 " + rand]).decode()
+    res = subprocess.check_output(
+        [
+            "../../hostapd/hlr_auc_gw",
+            "-m",
+            "auth_serv/hlr_auc_gw.milenage_db",
+            f"GSM-AUTH-REQ 232010000000000 {rand}",
+        ]
+    ).decode()
     if "GSM-AUTH-RESP" not in res:
         raise Exception("Unexpected hlr_auc_gw response")
     resp = res.split(' ')[2].rstrip()
 
-    dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:" + resp)
+    dev[0].request(f"CTRL-RSP-SIM-{rid}:GSM-AUTH:{resp}")
     dev[0].wait_connected(timeout=15)
     hapd.wait_sta()
 
@@ -852,15 +895,19 @@ def _test_ap_wpa2_eap_sim_no_change_set(dev, apdev):
     rid = p[0].split('-')[3]
     rand = p[2].split(' ')[0]
 
-    res = subprocess.check_output(["../../hostapd/hlr_auc_gw",
-                                   "-m",
-                                   "auth_serv/hlr_auc_gw.milenage_db",
-                                   "GSM-AUTH-REQ 232010000000000 " + rand]).decode()
+    res = subprocess.check_output(
+        [
+            "../../hostapd/hlr_auc_gw",
+            "-m",
+            "auth_serv/hlr_auc_gw.milenage_db",
+            f"GSM-AUTH-REQ 232010000000000 {rand}",
+        ]
+    ).decode()
     if "GSM-AUTH-RESP" not in res:
         raise Exception("Unexpected hlr_auc_gw response")
     resp = res.split(' ')[2].rstrip()
 
-    dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:" + resp)
+    dev[0].request(f"CTRL-RSP-SIM-{rid}:GSM-AUTH:{resp}")
     dev[0].wait_connected(timeout=15)
     hapd.wait_sta()
 
@@ -915,15 +962,19 @@ def run_ap_wpa2_eap_sim_ext_anonymous(dev, anon, anon_id_change=True):
     rid = p[0].split('-')[3]
     rand = p[2].split(' ')[0]
 
-    res = subprocess.check_output(["../../hostapd/hlr_auc_gw",
-                                   "-m",
-                                   "auth_serv/hlr_auc_gw.milenage_db",
-                                   "GSM-AUTH-REQ 232010000000000 " + rand]).decode()
+    res = subprocess.check_output(
+        [
+            "../../hostapd/hlr_auc_gw",
+            "-m",
+            "auth_serv/hlr_auc_gw.milenage_db",
+            f"GSM-AUTH-REQ 232010000000000 {rand}",
+        ]
+    ).decode()
     if "GSM-AUTH-RESP" not in res:
         raise Exception("Unexpected hlr_auc_gw response")
     resp = res.split(' ')[2].rstrip()
 
-    dev[0].request("CTRL-RSP-SIM-" + rid + ":GSM-AUTH:" + resp)
+    dev[0].request(f"CTRL-RSP-SIM-{rid}:GSM-AUTH:{resp}")
     dev[0].wait_connected(timeout=5)
     anon_id = dev[0].get_network(id, "anonymous_identity").strip('"')
     if anon_id_change and anon == anon_id:

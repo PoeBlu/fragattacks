@@ -97,31 +97,27 @@ class RFKill(object):
         return self.blocked[1]
 
     def block(self):
-        rfk = open('/dev/rfkill', 'wb')
-        s = struct.pack(_event_struct, self.idx, TYPE_ALL, _OP_CHANGE, 1, 0)
-        rfk.write(s)
-        rfk.close()
+        with open('/dev/rfkill', 'wb') as rfk:
+            s = struct.pack(_event_struct, self.idx, TYPE_ALL, _OP_CHANGE, 1, 0)
+            rfk.write(s)
 
     def unblock(self):
-        rfk = open('/dev/rfkill', 'wb')
-        s = struct.pack(_event_struct, self.idx, TYPE_ALL, _OP_CHANGE, 0, 0)
-        rfk.write(s)
-        rfk.close()
+        with open('/dev/rfkill', 'wb') as rfk:
+            s = struct.pack(_event_struct, self.idx, TYPE_ALL, _OP_CHANGE, 0, 0)
+            rfk.write(s)
 
     @classmethod
     def block_all(cls, t=TYPE_ALL):
-        rfk = open('/dev/rfkill', 'wb')
-        print(rfk)
-        s = struct.pack(_event_struct, 0, t, _OP_CHANGE_ALL, 1, 0)
-        rfk.write(s)
-        rfk.close()
+        with open('/dev/rfkill', 'wb') as rfk:
+            print(rfk)
+            s = struct.pack(_event_struct, 0, t, _OP_CHANGE_ALL, 1, 0)
+            rfk.write(s)
 
     @classmethod
     def unblock_all(cls, t=TYPE_ALL):
-        rfk = open('/dev/rfkill', 'wb')
-        s = struct.pack(_event_struct, 0, t, _OP_CHANGE_ALL, 0, 0)
-        rfk.write(s)
-        rfk.close()
+        with open('/dev/rfkill', 'wb') as rfk:
+            s = struct.pack(_event_struct, 0, t, _OP_CHANGE_ALL, 0, 0)
+            rfk.write(s)
 
     @classmethod
     def list(cls):
@@ -133,7 +129,7 @@ class RFKill(object):
         while True:
             try:
                 d = rfk.read(_event_sz)
-                if d == None:
+                if d is None:
                     break
                 _idx, _t, _op, _s, _h = struct.unpack(_event_struct, d)
                 if _op != _OP_ADD:

@@ -25,7 +25,7 @@ def main():
 		set_monitor_mode(options.monitor)
 		chan_inject = get_channel(options.inject)
 		chan_monitor = get_channel(options.monitor)
-		if chan_inject == None or chan_monitor == None:
+		if chan_inject is None or chan_monitor is None:
 			log(WARNING, "Unable to verify if both devices are on the same channel")
 		elif chan_inject != chan_monitor:
 			log(ERROR, "Both devices are not on the same channel")

@@ -18,7 +18,7 @@ def remote_compatible(func):
 
 def execute_thread(command, reply):
     cmd = ' '.join(command)
-    logger.debug("thread run: " + cmd)
+    logger.debug(f"thread run: {cmd}")
     err = tempfile.TemporaryFile()
     try:
         status = 0
@@ -29,14 +29,14 @@ def execute_thread(command, reply):
         buf = err.read()
     err.close()
 
-    logger.debug("thread cmd: " + cmd)
-    logger.debug("thread exit status: " + str(status))
-    logger.debug("thread exit buf: " + str(buf))
+    logger.debug(f"thread cmd: {cmd}")
+    logger.debug(f"thread exit status: {str(status)}")
+    logger.debug(f"thread exit buf: {str(buf)}")
     reply.append(status)
     reply.append(buf)
 
 def gen_reaper_file(conf):
-    fd, filename = tempfile.mkstemp(dir='/tmp', prefix=conf + '-')
+    fd, filename = tempfile.mkstemp(dir='/tmp', prefix=f'{conf}-')
     f = os.fdopen(fd, 'w')
 
     f.write("#!/bin/sh\n")
@@ -62,7 +62,7 @@ class Host():
             self.name = host
 
     def local_execute(self, command):
-        logger.debug("execute: " + str(command))
+        logger.debug(f"execute: {str(command)}")
         err = tempfile.TemporaryFile()
         try:
             status = 0
@@ -73,16 +73,16 @@ class Host():
             buf = err.read()
         err.close()
 
-        logger.debug("status: " + str(status))
-        logger.debug("buf: " + str(buf))
+        logger.debug(f"status: {str(status)}")
+        logger.debug(f"buf: {str(buf)}")
         return status, buf.decode()
 
     def execute(self, command):
         if self.host is None:
             return self.local_execute(command)
 
-        cmd = ["ssh", self.user + "@" + self.host, ' '.join(command)]
-        _cmd = self.name + " execute: " + ' '.join(cmd)
+        cmd = ["ssh", f"{self.user}@{self.host}", ' '.join(command)]
+        _cmd = f"{self.name} execute: " + ' '.join(cmd)
         logger.debug(_cmd)
         err = tempfile.TemporaryFile()
         try:
@@ -94,8 +94,8 @@ class Host():
             buf = err.read()
         err.close()
 
-        logger.debug(self.name + " status: " + str(status))
-        logger.debug(self.name + " buf: " + str(buf))
+        logger.debug(f"{self.name} status: {str(status)}")
+        logger.debug(f"{self.name} buf: {str(buf)}")
         return status, buf.decode()
 
     # async execute
@@ -112,8 +112,8 @@ class Host():
         if self.host is None:
             cmd = _command
         else:
-            cmd = ["ssh", self.user + "@" + self.host, ' '.join(_command)]
-        _cmd = self.name + " thread_run: " + ' '.join(cmd)
+            cmd = ["ssh", f"{self.user}@{self.host}", ' '.join(_command)]
+        _cmd = f"{self.name} thread_run: " + ' '.join(cmd)
         logger.debug(_cmd)
         t = threading.Thread(target=execute_thread, name=filename, args=(cmd, res))
         t.start()
@@ -123,22 +123,22 @@ class Host():
         if t.name.find("reaper") == -1:
             raise Exception("use_reaper required")
 
-        pid_file = t.name + ".pid"
+        pid_file = f"{t.name}.pid"
 
         if t.isAlive():
-            cmd = ["kill `cat " + pid_file + "`"]
+            cmd = [f"kill `cat {pid_file}`"]
             self.execute(cmd)
 
         # try again
         self.wait_execute_complete(t, 5)
         if t.isAlive():
-            cmd = ["kill `cat " + pid_file + "`"]
+            cmd = [f"kill `cat {pid_file}`"]
             self.execute(cmd)
 
         # try with -9
         self.wait_execute_complete(t, 5)
         if t.isAlive():
-            cmd = ["kill -9 `cat " + pid_file + "`"]
+            cmd = [f"kill -9 `cat {pid_file}`"]
             self.execute(cmd)
 
         self.wait_execute_complete(t, 5)
@@ -150,20 +150,14 @@ class Host():
         self.local_execute(["rm", t.name])
 
     def thread_wait(self, t, wait=None):
-        if wait == None:
-            wait_str = "infinite"
-        else:
-            wait_str = str(wait) + "s"
-
-        logger.debug(self.name + " thread_wait(" + wait_str + "): ")
+        wait_str = "infinite" if wait is None else f"{str(wait)}s"
+        logger.debug(f"{self.name} thread_wait({wait_str}): ")
         if t.isAlive():
             t.join(wait)
 
     def pending(self, s, timeout=0):
         [r, w, e] = select.select([s], [], [], timeout)
-        if r:
-            return True
-        return False
+        return bool(r)
 
     def proc_run(self, command):
         filename = gen_reaper_file("reaper")
@@ -172,11 +166,11 @@ class Host():
         _command = [filename] + command
 
         if self.host:
-            cmd = ["ssh", self.user + "@" + self.host, ' '.join(_command)]
+            cmd = ["ssh", f"{self.user}@{self.host}", ' '.join(_command)]
         else:
             cmd = _command
 
-        _cmd = self.name + " proc_run: " + ' '.join(cmd)
+        _cmd = f"{self.name} proc_run: " + ' '.join(cmd)
         logger.debug(_cmd)
         err = tempfile.TemporaryFile()
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err)
@@ -187,7 +181,12 @@ class Host():
         if not isinstance(events, list):
             raise Exception("proc_wait_event() events not a list")
 
-        logger.debug(self.name + " proc_wait_event: " + ' '.join(events) + " timeout: " + str(timeout))
+        logger.debug(
+            f"{self.name} proc_wait_event: "
+            + ' '.join(events)
+            + " timeout: "
+            + str(timeout)
+        )
         start = os.times()[4]
         try:
             while True:
@@ -214,16 +213,14 @@ class Host():
         if not proc:
             return
 
-        self.execute(["kill `cat " + proc.reaper_file + ".pid`"])
-        self.execute(["rm", proc.reaper_file + ".pid"])
+        self.execute([f"kill `cat {proc.reaper_file}.pid`"])
+        self.execute(["rm", f"{proc.reaper_file}.pid"])
         self.execute(["rm", proc.reaper_file])
         self.local_execute(["rm", proc.reaper_file])
         proc.kill()
 
     def proc_dump(self, proc):
-        if not proc:
-            return ""
-        return proc.stdout.read()
+        return proc.stdout.read() if proc else ""
 
     def execute_and_wait_event(self, command, events, timeout=10):
         proc = None
@@ -244,12 +241,11 @@ class Host():
     def get_logs(self, local_log_dir=None):
         for log in self.logs:
             if local_log_dir:
-                self.local_execute(["scp", self.user + "@[" + self.host + "]:" + log, local_log_dir])
+                self.local_execute(["scp", f"{self.user}@[{self.host}]:{log}", local_log_dir])
             self.execute(["rm", log])
         del self.logs[:]
 
     def send_file(self, src, dst):
         if self.host is None:
             return
-        self.local_execute(["scp", src,
-                            self.user + "@[" + self.host + "]:" + dst])
+        self.local_execute(["scp", src, f"{self.user}@[{self.host}]:{dst}"])

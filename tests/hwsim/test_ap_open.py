@@ -46,10 +46,10 @@ def test_ap_open_packet_loss(dev, apdev):
               "ignore_assoc_probability": "0.5",
               "ignore_reassoc_probability": "0.5"}
     hapd = hostapd.add_ap(apdev[0], params)
-    for i in range(0, 3):
+    for i in range(3):
         dev[i].connect("open", key_mgmt="NONE", scan_freq="2412",
                        wait_connect=False)
-    for i in range(0, 3):
+    for i in range(3):
         dev[i].wait_connected(timeout=20)
 
 @remote_compatible
@@ -58,7 +58,7 @@ def test_ap_open_unknown_action(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], {"ssid": "open"})
     dev[0].connect("open", key_mgmt="NONE", scan_freq="2412")
     bssid = apdev[0]['bssid']
-    cmd = "MGMT_TX {} {} freq=2412 action=765432".format(bssid, bssid)
+    cmd = f"MGMT_TX {bssid} {bssid} freq=2412 action=765432"
     if "FAIL" in dev[0].request(cmd):
         raise Exception("Could not send test Action frame")
     ev = dev[0].wait_event(["MGMT-TX-STATUS"], timeout=10)
@@ -72,7 +72,7 @@ def test_ap_open_invalid_wmm_action(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], {"ssid": "open"})
     dev[0].connect("open", key_mgmt="NONE", scan_freq="2412")
     bssid = apdev[0]['bssid']
-    cmd = "MGMT_TX {} {} freq=2412 action=1100".format(bssid, bssid)
+    cmd = f"MGMT_TX {bssid} {bssid} freq=2412 action=1100"
     if "FAIL" in dev[0].request(cmd):
         raise Exception("Could not send test Action frame")
     ev = dev[0].wait_event(["MGMT-TX-STATUS"], timeout=10)
@@ -84,7 +84,7 @@ def test_ap_open_reconnect_on_inactivity_disconnect(dev, apdev):
     """Reconnect to open mode AP after inactivity related disconnection"""
     hapd = hostapd.add_ap(apdev[0], {"ssid": "open"})
     dev[0].connect("open", key_mgmt="NONE", scan_freq="2412")
-    hapd.request("DEAUTHENTICATE " + dev[0].p2p_interface_addr() + " reason=4")
+    hapd.request(f"DEAUTHENTICATE {dev[0].p2p_interface_addr()} reason=4")
     dev[0].wait_disconnected(timeout=5)
     dev[0].wait_connected(timeout=2, error="Timeout on reconnection")
 
@@ -97,7 +97,7 @@ def test_ap_open_assoc_timeout(dev, apdev):
     hapd.set("ext_mgmt_frame_handling", "1")
     dev[0].connect("open", key_mgmt="NONE", scan_freq="2412",
                    wait_connect=False)
-    for i in range(0, 10):
+    for _ in range(10):
         req = hapd.mgmt_rx()
         if req is None:
             raise Exception("MGMT RX wait timed out")
@@ -107,16 +107,17 @@ def test_ap_open_assoc_timeout(dev, apdev):
     if not req:
         raise Exception("Authentication frame not received")
 
-    resp = {}
-    resp['fc'] = req['fc']
-    resp['da'] = req['sa']
-    resp['sa'] = req['da']
-    resp['bssid'] = req['bssid']
-    resp['payload'] = struct.pack('<HHH', 0, 2, 0)
+    resp = {
+        'fc': req['fc'],
+        'da': req['sa'],
+        'sa': req['da'],
+        'bssid': req['bssid'],
+        'payload': struct.pack('<HHH', 0, 2, 0),
+    }
     hapd.mgmt_tx(resp)
 
     assoc = 0
-    for i in range(0, 10):
+    for _ in range(10):
         req = hapd.mgmt_rx()
         if req is None:
             raise Exception("MGMT RX wait timed out")
@@ -136,7 +137,7 @@ def test_ap_open_auth_drop_sta(dev, apdev):
     hapd.set("ext_mgmt_frame_handling", "1")
     dev[0].connect("open", key_mgmt="NONE", scan_freq="2412",
                    wait_connect=False)
-    for i in range(0, 10):
+    for _ in range(10):
         req = hapd.mgmt_rx()
         if req is None:
             raise Exception("MGMT RX wait timed out")
@@ -149,12 +150,13 @@ def test_ap_open_auth_drop_sta(dev, apdev):
     # turn off before sending successful response
     hapd.set("ext_mgmt_frame_handling", "0")
 
-    resp = {}
-    resp['fc'] = req['fc']
-    resp['da'] = req['sa']
-    resp['sa'] = req['da']
-    resp['bssid'] = req['bssid']
-    resp['payload'] = struct.pack('<HHH', 0, 2, 0)
+    resp = {
+        'fc': req['fc'],
+        'da': req['sa'],
+        'sa': req['da'],
+        'bssid': req['bssid'],
+        'payload': struct.pack('<HHH', 0, 2, 0),
+    }
     hapd.mgmt_tx(resp)
 
     dev[0].wait_connected(timeout=15)
@@ -167,7 +169,7 @@ def test_ap_open_id_str(dev, apdev):
                    wait_connect=False)
     ev = dev[0].wait_connected(timeout=10)
     if "id_str=foo" not in ev:
-        raise Exception("CTRL-EVENT-CONNECT did not have matching id_str: " + ev)
+        raise Exception(f"CTRL-EVENT-CONNECT did not have matching id_str: {ev}")
     if dev[0].get_status_field("id_str") != "foo":
         raise Exception("id_str mismatch")
 
@@ -219,7 +221,7 @@ def test_ap_open_external_assoc(dev, apdev):
         dev[0].request("STA_AUTOCONNECT 0")
         id = dev[0].connect("open-ext-assoc", key_mgmt="NONE", scan_freq="2412",
                             only_add_network=True)
-        dev[0].request("ENABLE_NETWORK %s no-connect" % id)
+        dev[0].request(f"ENABLE_NETWORK {id} no-connect")
         dev[0].dump_monitor()
         # This will be accepted due to matching network
         dev[0].cmd_execute(['iw', 'dev', dev[0].ifname, 'connect',
@@ -246,7 +248,7 @@ def test_ap_bss_load(dev, apdev):
     dev[0].connect("open", key_mgmt="NONE", scan_freq="2412")
     # this does not really get much useful output with mac80211_hwsim currently,
     # but run through the channel survey update couple of times
-    for i in range(0, 10):
+    for _ in range(10):
         hwsim_utils.test_connectivity(dev[0], hapd)
         hwsim_utils.test_connectivity(dev[0], hapd)
         hwsim_utils.test_connectivity(dev[0], hapd)
@@ -364,7 +366,9 @@ def _test_ap_open_wpas_in_bridge(dev, apdev):
         raise Exception("Interface addition succeeded unexpectedly")
     except Exception as e:
         if "Failed to add" in str(e):
-            logger.info("Ignore expected interface_add failure due to missing bridge interface: " + str(e))
+            logger.info(
+                f"Ignore expected interface_add failure due to missing bridge interface: {str(e)}"
+            )
         else:
             raise
 
@@ -466,7 +470,7 @@ def test_ap_open_disconnect_in_ps(dev, apdev, params):
         sa = hapd.own_addr()
         da = dev[0].own_addr()
         hapd.request('DATA_TEST_CONFIG 1')
-        hapd.request('DATA_TEST_TX {} {} 0'.format(da, sa))
+        hapd.request(f'DATA_TEST_TX {da} {sa} 0')
         hapd.request('DATA_TEST_CONFIG 0')
 
         # let the AP send couple of Beacon frames
@@ -514,11 +518,11 @@ def run_ap_open_sta_ps(dev, hapd):
     time.sleep(0.2)
 
     phyname = dev[0].get_driver_status_field("phyname")
-    hw_conf = '/sys/kernel/debug/ieee80211/' + phyname + '/hw_conf'
+    hw_conf = f'/sys/kernel/debug/ieee80211/{phyname}/hw_conf'
 
     try:
         ok = False
-        for i in range(10):
+        for _ in range(10):
             with open(hw_conf, 'r') as f:
                 val = int(f.read())
             if val & 2:
@@ -531,7 +535,7 @@ def run_ap_open_sta_ps(dev, hapd):
 
         dev[0].dump_monitor()
         hapd.dump_monitor()
-        hapd.request("DEAUTHENTICATE " + dev[0].own_addr())
+        hapd.request(f"DEAUTHENTICATE {dev[0].own_addr()}")
         dev[0].wait_disconnected()
     except FileNotFoundError:
         raise HwsimSkip("Kernel does not support inspecting HW PS state")
@@ -550,7 +554,7 @@ def test_ap_open_ps_mc_buf(dev, apdev, params):
         # Give time to enter PS
         time.sleep(0.3)
 
-        for i in range(10):
+        for _ in range(10):
             # Verify that multicast frames are released
             hwsim_utils.run_multicast_connectivity_test(hapd, dev[0])
 
@@ -605,7 +609,7 @@ def test_ap_open_disable_enable(dev, apdev):
     dev[0].connect("open", key_mgmt="NONE", scan_freq="2412",
                    bg_scan_period="0")
 
-    for i in range(2):
+    for _ in range(2):
         hapd.request("DISABLE")
         dev[0].wait_disconnected()
         hapd.request("ENABLE")
@@ -624,10 +628,10 @@ def sta_enable_disable(dev, bssid):
     if "connect@" not in dev.request("RADIO_WORK show"):
         raise Exception("connect radio work missing")
     dev.request("DISABLE_NETWORK %d" % id)
-    dev.request("RADIO_WORK done " + work_id)
+    dev.request(f"RADIO_WORK done {work_id}")
 
     ok = False
-    for i in range(30):
+    for _ in range(30):
         if "connect@" not in dev.request("RADIO_WORK show"):
             ok = True
             break
@@ -693,13 +697,13 @@ def test_ap_open_sta_statistics(dev, apdev):
     addr = dev[0].own_addr()
 
     stats1 = hapd.get_sta(addr)
-    logger.info("stats1: " + str(stats1))
+    logger.info(f"stats1: {str(stats1)}")
     time.sleep(0.4)
     stats2 = hapd.get_sta(addr)
-    logger.info("stats2: " + str(stats2))
+    logger.info(f"stats2: {str(stats2)}")
     hwsim_utils.test_connectivity(dev[0], hapd)
     stats3 = hapd.get_sta(addr)
-    logger.info("stats3: " + str(stats3))
+    logger.info(f"stats3: {str(stats3)}")
 
     # Cannot require specific inactive_msec changes without getting rid of all
     # unrelated traffic, so for now, just print out the results in the log for
@@ -712,13 +716,13 @@ def test_ap_open_poll_sta(dev, apdev):
     dev[0].connect("open", key_mgmt="NONE", scan_freq="2412")
     addr = dev[0].own_addr()
 
-    if "OK" not in hapd.request("POLL_STA " + addr):
+    if "OK" not in hapd.request(f"POLL_STA {addr}"):
         raise Exception("POLL_STA failed")
     ev = hapd.wait_event(["AP-STA-POLL-OK"], timeout=5)
     if ev is None:
         raise Exception("Poll response not seen")
     if addr not in ev:
-        raise Exception("Unexpected poll response: " + ev)
+        raise Exception(f"Unexpected poll response: {ev}")
 
 def test_ap_open_poll_sta_no_ack(dev, apdev):
     """AP with open mode and STA poll without ACK"""
@@ -730,7 +734,7 @@ def test_ap_open_poll_sta_no_ack(dev, apdev):
     dev[0].request("DISCONNECT")
     dev[0].wait_disconnected()
     hapd.set("ext_mgmt_frame_handling", "0")
-    if "OK" not in hapd.request("POLL_STA " + addr):
+    if "OK" not in hapd.request(f"POLL_STA {addr}"):
         raise Exception("POLL_STA failed")
     ev = hapd.wait_event(["AP-STA-POLL-OK"], timeout=1)
     if ev is not None:
@@ -776,8 +780,7 @@ def test_ap_open_drv_fail(dev, apdev):
         dev[0].request("REMOVE_NETWORK all")
 
 def run_multicast_to_unicast(dev, apdev, convert):
-    params = {"ssid": "open"}
-    params["multicast_to_unicast"] = "1" if convert else "0"
+    params = {"ssid": "open", "multicast_to_unicast": "1" if convert else "0"}
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].scan_for_bss(hapd.own_addr(), freq=2412)
     dev[0].connect("open", key_mgmt="NONE", scan_freq="2412")
@@ -805,32 +808,48 @@ def test_ap_open_drop_duplicate(dev, apdev, params):
     hapd.set("ext_mgmt_frame_handling", "1")
     bssid = hapd.own_addr().replace(':', '')
     addr = "020304050607"
-    auth = "b0003a01" + bssid + addr + bssid + '1000000001000000'
-    if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % auth):
+    auth = f"b0003a01{bssid}{addr}{bssid}1000000001000000"
+    if "OK" not in hapd.request(
+        f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={auth}"
+    ):
         raise Exception("MGMT_RX_PROCESS failed")
-    auth = "b0083a01" + bssid + addr + bssid + '1000000001000000'
-    if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % auth):
+    auth = f"b0083a01{bssid}{addr}{bssid}1000000001000000"
+    if "OK" not in hapd.request(
+        f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={auth}"
+    ):
         raise Exception("MGMT_RX_PROCESS failed")
 
     ies = "00046f70656e010802040b160c12182432043048606c2d1a3c101bffff0000000000000000000001000000000000000000007f0a04000a020140004000013b155151525354737475767778797a7b7c7d7e7f808182dd070050f202000100"
-    assoc_req = "00003a01" + bssid + addr + bssid + "2000" + "21040500" + ies
-    if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % assoc_req):
+    assoc_req = f"00003a01{bssid}{addr}{bssid}200021040500{ies}"
+    if "OK" not in hapd.request(
+        f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={assoc_req}"
+    ):
         raise Exception("MGMT_RX_PROCESS failed")
-    assoc_req = "00083a01" + bssid + addr + bssid + "2000" + "21040500" + ies
-    if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % assoc_req):
+    assoc_req = f"00083a01{bssid}{addr}{bssid}200021040500{ies}"
+    if "OK" not in hapd.request(
+        f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={assoc_req}"
+    ):
         raise Exception("MGMT_RX_PROCESS failed")
-    reassoc_req = "20083a01" + bssid + addr + bssid + "2000" + "21040500" + ies
-    if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % reassoc_req):
+    reassoc_req = f"20083a01{bssid}{addr}{bssid}200021040500{ies}"
+    if "OK" not in hapd.request(
+        f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={reassoc_req}"
+    ):
         raise Exception("MGMT_RX_PROCESS failed")
-    if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % reassoc_req):
+    if "OK" not in hapd.request(
+        f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={reassoc_req}"
+    ):
         raise Exception("MGMT_RX_PROCESS failed")
 
-    action = "d0003a01" + bssid + addr + bssid + "1000" + "040a006c0200000600000102000101"
-    if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % action):
+    action = f"d0003a01{bssid}{addr}{bssid}1000040a006c0200000600000102000101"
+    if "OK" not in hapd.request(
+        f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={action}"
+    ):
         raise Exception("MGMT_RX_PROCESS failed")
 
-    action = "d0083a01" + bssid + addr + bssid + "1000" + "040a006c0200000600000102000101"
-    if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % action):
+    action = f"d0083a01{bssid}{addr}{bssid}1000040a006c0200000600000102000101"
+    if "OK" not in hapd.request(
+        f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={action}"
+    ):
         raise Exception("MGMT_RX_PROCESS failed")
 
     out = run_tshark(os.path.join(params['logdir'], "hwsim0.pcapng"),
@@ -841,14 +860,14 @@ def test_ap_open_drop_duplicate(dev, apdev, params):
     num_action = 0
     for subtype in out.splitlines():
         val = int(subtype)
-        if val == 11:
-            num_auth += 1
-        elif val == 1:
+        if val == 1:
             num_assoc += 1
-        elif val == 3:
-            num_reassoc += 1
+        elif val == 11:
+            num_auth += 1
         elif val == 13:
             num_action += 1
+        elif val == 3:
+            num_reassoc += 1
     if num_auth != 1:
         raise Exception("Unexpected number of Authentication frames: %d" % num_auth)
     if num_assoc != 1:
@@ -871,7 +890,7 @@ def test_ap_open_select_network_freq(dev, apdev):
     if ev is None:
         raise Exception("Scan not completed")
     end = os.times()[4]
-    logger.info("Scan duration: {} seconds".format(end - start))
+    logger.info(f"Scan duration: {end - start} seconds")
     if end - start > 3:
         raise Exception("Scan took unexpectedly long time")
     dev[0].wait_connected()

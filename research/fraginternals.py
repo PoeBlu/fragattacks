@@ -17,9 +17,7 @@ FRAGVERSION = "1.3"
 
 def croprepr(p, length=175):
 	string = repr(p)
-	if len(string) > length:
-		return string[:length - 3] + "..."
-	return string
+	return f"{string[:length - 3]}..." if len(string) > length else string
 
 def log_level2switch(options):
 	if options.debug >= 2: return ["-dd", "-K"]
@@ -88,7 +86,7 @@ def generate_request(sta, ptype, prior=2, icmp_size=None, padding=None, to_self=
 	elif ptype == REQ_ICMP:
 		label = b"test_ping_icmp"
 
-		if icmp_size == None: icmp_size = 0
+		if icmp_size is None: icmp_size = 0
 		payload = label + b"A" * max(0, icmp_size - len(label))
 
 		check = lambda p: ICMP in p and label in raw(p) and p[ICMP].type == 0
@@ -168,7 +166,7 @@ class Action():
 		# Action will not be immediately executed if it has the same trigger (instead
 		# we have to wait on a new trigger e.g. after rekey, reconnect, roam).
 		self.wait = wait
-		if self.wait == None:
+		if self.wait is None:
 			self.wait = action in [Action.Rekey, Action.Reconnect, Action.Roam]
 
 		# Specific to fragment injection
@@ -208,7 +206,7 @@ class Test(metaclass=abc.ABCMeta):
 		self.time_completed = None
 
 	def requires_manual_check(self):
-		return self.check_fn == None
+		return self.check_fn is None
 
 	def next_trigger_is(self, trigger):
 		if len(self.actions) == 0:
@@ -243,14 +241,14 @@ class Test(metaclass=abc.ABCMeta):
 		# If this was the last action, record the time
 		if len(self.actions) == 0:
 			self.time_completed = time.time()
-			if self.check_fn == None:
+			if self.check_fn is None:
 				log(STATUS, ">>> All frames sent. You must manually check if the test succeeded (see README).", color="green")
 
 	def get_actions(self, action):
 		return [act for act in self.actions if act.action == action]
 
 	def timedout(self):
-		if self.time_completed == None:
+		if self.time_completed is None:
 			return False
 		return self.time_completed + 5 < time.time()
 
@@ -264,16 +262,14 @@ class Test(metaclass=abc.ABCMeta):
 		self.enforce_inc_pn()
 
 	def check(self, p):
-		if self.check_fn == None:
-			return False
-		return self.check_fn(p)
+		return False if self.check_fn is None else self.check_fn(p)
 
 	def set_general_options(self, delay=None, inc_pn=None):
 		self.delay = delay
 		self.inc_pn = inc_pn
 
 	def enforce_delay(self):
-		if self.delay == None or self.delay <= 0:
+		if self.delay is None or self.delay <= 0:
 			return
 
 		# Add a delay between injected fragments if requested
@@ -281,7 +277,7 @@ class Test(metaclass=abc.ABCMeta):
 			frag.delay = self.delay
 
 	def enforce_inc_pn(self):
-		if self.inc_pn == None:
+		if self.inc_pn is None:
 			return
 
 		# Use specific PN increments between frames if requested
@@ -345,7 +341,7 @@ class Station():
 
 	def handle_eth(self, p):
 		if self.test != None and self.test.check != None and self.test.check(p):
-			log(STATUS, "Received packet: " + repr(p))
+			log(STATUS, f"Received packet: {repr(p)}")
 			log(STATUS, ">>> TEST COMPLETED SUCCESSFULLY", color="green")
 			self.stop_test(failed=False)
 
@@ -392,12 +388,12 @@ class Station():
 			if self.tk and not plaintext: p, _ = self.encrypt(p)
 
 		self.daemon.inject_mon(p)
-		log(STATUS, "[Injected packet] " + croprepr(p))
+		log(STATUS, f"[Injected packet] {croprepr(p)}")
 
 	def set_header(self, p, prior=None):
 		"""Set addresses to send frame to the peer or the 3rd party station."""
 		# Priority is only supported in data frames
-		assert (prior == None) or (p.type == 2)
+		assert prior is None or p.type == 2
 
 		# Set the appropriate to-DS or from-DS bits
 		p.FCfield |= self.FCfield
@@ -405,19 +401,18 @@ class Station():
 		# Add the QoS header if requested
 		if prior != None:
 			p.subtype = 8
-			if not Dot11QoS in p:
+			if Dot11QoS not in p:
 				p.add_payload(Dot11QoS(TID=prior))
 			else:
 				p[Dot11QoS].TID = prior
 
+		p.addr2 = self.mac
 		# This checks if the to-DS is set (frame towards the AP)
 		if p.FCfield & 1 != 0:
 			p.addr1 = self.bss
-			p.addr2 = self.mac
 			p.addr3 = self.get_peermac()
 		else:
 			p.addr1 = self.peermac
-			p.addr2 = self.mac
 			p.addr3 = self.bss
 
 	def get_header(self, seqnum=None, prior=2, **kwargs):
@@ -426,7 +421,7 @@ class Station():
 		will still accept lower Packet Numbers on other priorities.
 		"""
 
-		if seqnum == None:
+		if seqnum is None:
 			seqnum = self.seqnum
 			self.seqnum += 1
 
@@ -468,13 +463,11 @@ class Station():
 	def get_peermac(self):
 		# When being a client, the peermac may not yet be known. In that
 		# case we assume it's the same as the BSS (= AP) MAC address.
-		if self.peermac == None:
-			return self.bss
-		return self.peermac
+		return self.bss if self.peermac is None else self.peermac
 
 	def trigger_eapol_events(self, eapol):
 		# Ignore everything apart the 4-way handshake
-		if not WPA_key in eapol: return None
+		if WPA_key not in eapol: return None
 
 		# Track return value of possible trigger Action function
 		result = None
@@ -497,12 +490,11 @@ class Station():
 			result = self.perform_actions(Action.StartAuth, eapol=eapol)
 			self.hs_state = Station.HsGotM12
 
-			if self.time_authdone == None:
+			if self.time_authdone is None:
 				self.time_authdone = time.time() + 6
 
 			self.time_connected = None
 
-		# Inject any fragments when almost done authenticating
 		elif is_msg3_or_4 and self.hs_state == Station.HsGotM12:
 			log(STATUS, "Action.BeforeAuth", color="green")
 			result = self.perform_actions(Action.BeforeAuth, eapol=eapol)
@@ -514,7 +506,7 @@ class Station():
 		eapol = Ether(dst=dstmac, src=self.mac)/EAPOL(eapol)
 		send_it = self.trigger_eapol_events(eapol)
 
-		if send_it == None:
+		if send_it is None:
 			# - Send over monitor interface to assure order compared to injected fragments.
 			# - This is also important because the station might have already installed the
 			#   key before this script can send the EAPOL frame over Ethernet (but we didn't
@@ -526,7 +518,7 @@ class Station():
 
 	def perform_actions(self, trigger, **kwargs):
 		result = None
-		if self.test == None:
+		if self.test is None:
 			return
 
 		frame = None
@@ -542,8 +534,8 @@ class Station():
 
 			elif act.action == Action.Func:
 				result = act.func(self, **kwargs)
-				log(STATUS, "[Executed Function] Result=" + str(result))
-				# TODO: How to collect multiple results on one trigger?
+				log(STATUS, f"[Executed Function] Result={str(result)}")
+						# TODO: How to collect multiple results on one trigger?
 
 			elif act.action == Action.Rekey:
 				# Force rekey as AP, wait on rekey as client
@@ -565,12 +557,12 @@ class Station():
 				if act.encrypted:
 					assert self.tk != None and self.gtk != None
 					frame, key = self.encrypt(act.frame, inc_pn=act.inc_pn, force_key=act.key)
-					log(STATUS, "Using key " + key.hex() + " to encrypt " + repr(act.frame))
+					log(STATUS, f"Using key {key.hex()} to encrypt {repr(act.frame)}")
 				else:
 					frame = act.frame
 
 				self.daemon.inject_mon(frame)
-				log(STATUS, "[Injected] " + repr(frame))
+				log(STATUS, f"[Injected] {repr(frame)}")
 
 				if self.options.inject_mf_workaround and frame.FCfield & 0x4 != 0:
 					self.daemon.inject_mon(Dot11(addr1="ff:ff:ff:ff:ff:ff"))
@@ -613,7 +605,10 @@ class Station():
 		self.peerip = peerip
 		self.obtained_ip = True
 
-		log(DEBUG, "Waiting on IP before forming next actions: " + str(self.waiting_on_ip))
+		log(
+			DEBUG,
+			f"Waiting on IP before forming next actions: {str(self.waiting_on_ip)}",
+		)
 		if self.waiting_on_ip:
 			self.waiting_on_ip = False
 			self.perform_actions(Action.Connected)
@@ -698,14 +693,17 @@ class Daemon(metaclass=abc.ABCMeta):
 		#self.wpaspy_clear_messages(ctrl)
 
 		# Include console prefix so we can ignore other messages sent over the control interface
-		response = self.wpaspy_ctrl.request("> " + cmd)
+		response = self.wpaspy_ctrl.request(f"> {cmd}")
 		while not response.startswith("> "):
 			self.wpaspy_pending.append(response)
-			log(DEBUG, "<appending> " + response)
+			log(DEBUG, f"<appending> {response}")
 			response = self.wpaspy_ctrl.recv()
 
 		if "UNKNOWN COMMAND" in response:
-			log(ERROR, "wpa_supplicant did not recognize the command %s. Did you (re)compile wpa_supplicant/hostapd?" % cmd.split()[0])
+			log(
+				ERROR,
+				f"wpa_supplicant did not recognize the command {cmd.split()[0]}. Did you (re)compile wpa_supplicant/hostapd?",
+			)
 			quit(1)
 		elif "FAIL" in response:
 			log(ERROR, f"Failed to execute command {cmd}")
@@ -734,7 +732,10 @@ class Daemon(metaclass=abc.ABCMeta):
 			elif FRAGVERSION != open("/sys/module/mac80211/parameters/fragattack_version").read().strip():
 				version = open("/sys/module/mac80211/parameters/fragattack_version").read().strip()
 				log(ERROR, f"This script has version {FRAGVERSION} but the modified drivers are version {version}.")
-				log(ERROR, f"Recompile and reinstall the modified drivers or add --no-drivercheck (see the README for details).")
+				log(
+					ERROR,
+					"Recompile and reinstall the modified drivers or add --no-drivercheck (see the README for details).",
+				)
 				quit(1)
 
 		# 1. Assign/create interfaces according to provided options
@@ -754,7 +755,7 @@ class Daemon(metaclass=abc.ABCMeta):
 		else:
 			# Create second virtual interface in monitor mode. Note: some kernels
 			# don't support interface names of 15+ characters.
-			self.nic_mon = "mon" + self.nic_iface[:12]
+			self.nic_mon = f"mon{self.nic_iface[:12]}"
 
 			# Only create a new monitor interface if it does not yet exist
 			try:
@@ -765,7 +766,7 @@ class Daemon(metaclass=abc.ABCMeta):
 
 		# 2.A Remember whether to need to use injection workarounds.
 		driver = get_device_driver(self.nic_mon)
-		if driver == None:
+		if driver is None:
 			log(WARNING, "Unable to detect driver of interface!")
 			log(WARNING, "Injecting fragments may be unreliable.")
 		elif driver in ["ath9k_htc", "iwlwifi"]:
@@ -777,7 +778,7 @@ class Daemon(metaclass=abc.ABCMeta):
 		if not self.options.no_drivercheck and driver == "ath9k_htc":
 			try:
 				with open("/sys/module/ath9k_htc/parameters/fragattack_fw") as fp:
-					if not int(fp.read()) == 1:
+					if int(fp.read()) != 1:
 						log(ERROR, "WARNING: It seems the ath9k_htc device is not using patched firmware!")
 						log(STATUS, "To ignore this warning and timeout add the parameter --no-drivercheck")
 						time.sleep(5)
@@ -791,7 +792,7 @@ class Daemon(metaclass=abc.ABCMeta):
 			set_monitor_mode(self.nic_hwsim)
 
 		# 4. Configure test interface if used
-		if self.options.inject_test != None and self.options.inject_test != "self":
+		if self.options.inject_test not in [None, "self"]:
 			set_monitor_mode(self.options.inject_test)
 
 	def inject_mon(self, p):
@@ -803,18 +804,21 @@ class Daemon(metaclass=abc.ABCMeta):
 	def connect_wpaspy(self):
 		# Wait until daemon started
 		time_abort = time.time() + 10
-		while not os.path.exists("wpaspy_ctrl/" + self.nic_iface) and time.time() < time_abort:
+		while (
+			not os.path.exists(f"wpaspy_ctrl/{self.nic_iface}")
+			and time.time() < time_abort
+		):
 			time.sleep(0.1)
 
 		# Abort if daemon didn't start properly
-		if not os.path.exists("wpaspy_ctrl/" + self.nic_iface):
+		if not os.path.exists(f"wpaspy_ctrl/{self.nic_iface}"):
 			log(ERROR, "Unable to connect to control interface. Did hostap/wpa_supplicant start properly?")
 			log(ERROR, "Try recompiling them using ./build.sh and double-check client.conf and hostapd.conf.")
 			quit(1)
 
 		# Open the wpa_supplicant or hostapd control interface
 		try:
-			self.wpaspy_ctrl = Ctrl("wpaspy_ctrl/" + self.nic_iface)
+			self.wpaspy_ctrl = Ctrl(f"wpaspy_ctrl/{self.nic_iface}")
 			self.wpaspy_ctrl.attach()
 		except:
 			log(ERROR, "It seems wpa_supplicant/hostapd did not start properly.")
@@ -835,7 +839,7 @@ class Daemon(metaclass=abc.ABCMeta):
 			set_channel(self.nic_hwsim, channel)
 			set_channel(self.nic_mon, channel)
 
-		if self.options.inject_test != None and self.options.inject_test != "self":
+		if self.options.inject_test not in [None, "self"]:
 			# FIXME: When using 40 MHz channel this call tends to fail the first time
 			log(STATUS, f"{self.options.inject_test}: setting to channel {channel}")
 			set_channel(self.options.inject_test, channel)
@@ -844,7 +848,7 @@ class Daemon(metaclass=abc.ABCMeta):
 
 	def injection_test(self, peermac, ownmac, is_postauth):
 		# Only perform the test when explicitly requested
-		if self.options.inject_test == None:
+		if self.options.inject_test is None:
 			return
 
 		# If requested perform the test after authentication
@@ -863,9 +867,9 @@ class Daemon(metaclass=abc.ABCMeta):
 		quit(1)
 
 	def forward_hwsim(self, p, s):
-		if p == None: return
-		if not Dot11 in p: return
-		if p.type != 0 and p.type != 2: return
+		if p is None: return
+		if Dot11 not in p: return
+		if p.type not in [0, 2]: return
 
 		if len(p) >= 2200:
 			log(DEBUG, f"Cannot forward frame longer than MTU (length {len(p)}).")
@@ -893,7 +897,7 @@ class Daemon(metaclass=abc.ABCMeta):
 		version = self.wpaspy_command("GET_VERSION").strip()
 		if version != FRAGVERSION:
 			log(ERROR, f"This script has version {FRAGVERSION} but compiled wpa_supplicant/hostapd is {version}.")
-			log(ERROR, f"Please recompile hostapd/wpa_supplicant using `build.sh`.")
+			log(ERROR, "Please recompile hostapd/wpa_supplicant using `build.sh`.")
 			quit(1)
 
 		# Post-startup configuration of the supplicant or AP
@@ -946,10 +950,10 @@ class Authenticator(Daemon):
 		self.dhcp = None
 		self.arp_sender_ip = None
 		self.arp_sock = None
-		self.stations = dict()
+		self.stations = {}
 
 	def get_tk(self, station):
-		tk = self.wpaspy_command("GET_TK " + station.get_peermac())
+		tk = self.wpaspy_command(f"GET_TK {station.get_peermac()}")
 		return bytes.fromhex(tk)
 
 	def time_tick(self):
@@ -980,7 +984,7 @@ class Authenticator(Daemon):
 		self.wpaspy_command(cmd)
 
 	def handle_eth_dhcp(self, p, station):
-		if not DHCP in p or not station.get_peermac() in self.dhcp.leases: return
+		if DHCP not in p or station.get_peermac() not in self.dhcp.leases: return
 
 		# This assures we only mark it as connected after receiving a DHCP Request
 		req_type = next(opt[1] for opt in p[DHCP].options if isinstance(opt, tuple) and opt[0] == 'message-type')
@@ -996,7 +1000,7 @@ class Authenticator(Daemon):
 
 		# Ignore clients not connected to the AP
 		clientmac = p[Ether].src
-		if not clientmac in self.stations:
+		if clientmac not in self.stations:
 			return
 
 		# Let clients get IP addresses
@@ -1012,7 +1016,7 @@ class Authenticator(Daemon):
 			station.handle_eth(p)
 
 	def add_station(self, clientmac):
-		if not clientmac in self.stations:
+		if clientmac not in self.stations:
 			station = Station(self, self.apmac, "from-DS")
 			self.stations[clientmac] = station
 
@@ -1022,7 +1026,7 @@ class Authenticator(Daemon):
 				station.set_ip_addresses(self.options.ip, self.options.peerip)
 
 	def handle_wpaspy(self, msg):
-		log(DEBUG, "daemon: " + msg)
+		log(DEBUG, f"daemon: {msg}")
 
 		if "AP-STA-ASSOCIATING" in msg:
 			cmd, clientmac, source = msg.split()
@@ -1039,14 +1043,14 @@ class Authenticator(Daemon):
 
 		elif "EAPOL-TX" in msg:
 			cmd, clientmac, payload = msg.split()
-			if not clientmac in self.stations:
+			if clientmac not in self.stations:
 				log(WARNING, f"Sending EAPOL to unknown client {clientmac}.")
 				return
 			self.stations[clientmac].handle_eapol_tx(bytes.fromhex(payload), clientmac)
 
 		elif "AP-STA-CONNECTED" in msg:
 			cmd, clientmac = msg.split()
-			if not clientmac in self.stations:
+			if clientmac not in self.stations:
 				log(WARNING, f"Unknown client {clientmac} finished authenticating.")
 				return
 			self.stations[clientmac].handle_authenticated()
@@ -1142,7 +1146,7 @@ class Supplicant(Daemon):
 		self.station.time_tick()
 
 	def send_dhcp_discover(self):
-		if self.dhcp_xid == None:
+		if self.dhcp_xid is None:
 			self.dhcp_xid = random.randint(0, 2**31)
 
 		rawmac = bytes.fromhex(self.station.mac.replace(':', ''))
@@ -1169,7 +1173,7 @@ class Supplicant(Daemon):
 
 	def handle_eth_dhcp(self, p):
 		"""Handle packets needed to connect and request an IP"""
-		if not DHCP in p: return
+		if DHCP not in p: return
 
 		req_type = next(opt[1] for opt in p[DHCP].options if isinstance(opt, tuple) and opt[0] == 'message-type')
 
@@ -1211,7 +1215,7 @@ class Supplicant(Daemon):
 			self.station.handle_eth(p)
 
 	def handle_wpaspy(self, msg):
-		log(DEBUG, "daemon: " + msg)
+		log(DEBUG, f"daemon: {msg}")
 
 		if "Associated with" in msg:
 			# When using a separate interface to inject, switch to correct channel
@@ -1231,7 +1235,7 @@ class Supplicant(Daemon):
 
 		# The "EAPOL processing" event only occurs with WEP
 		if "WPA: Key negotiation completed with" in msg or \
-		   "WPA: EAPOL processing complete" in msg:
+			   "WPA: EAPOL processing complete" in msg:
 			# This get's the current keys
 			self.station.handle_authenticated()
 
@@ -1240,7 +1244,7 @@ class Supplicant(Daemon):
 	def roam(self, station):
 		log(STATUS, "Roaming to the current AP.", color="green")
 		self.wpaspy_command("SET reassoc_same_bss_optim 0")
-		self.wpaspy_command("ROAM " + station.bss)
+		self.wpaspy_command(f"ROAM {station.bss}")
 
 	def reconnect(self, station):
 		log(STATUS, "Reconnecting to the AP.", color="green")

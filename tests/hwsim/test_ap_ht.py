@@ -27,8 +27,8 @@ def test_ap_ht40_scan(dev, apdev):
     if state != "HT_SCAN":
         time.sleep(0.1)
         state = hapd.get_status_field("state")
-        if state != "HT_SCAN":
-            raise Exception("Unexpected interface state - expected HT_SCAN")
+    if state != "HT_SCAN":
+        raise Exception("Unexpected interface state - expected HT_SCAN")
 
     ev = hapd.wait_event(["AP-ENABLED"], timeout=10)
     if not ev:
@@ -49,11 +49,11 @@ def test_ap_ht40_scan(dev, apdev):
         raise Exception("Unexpected secondary channel")
 
     status = hapd.get_status()
-    logger.info("hostapd STATUS: " + str(status))
+    logger.info(f"hostapd STATUS: {str(status)}")
 
     dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
     sta = hapd.get_sta(dev[0].own_addr())
-    logger.info("hostapd STA: " + str(sta))
+    logger.info(f"hostapd STA: {str(sta)}")
 
     res = dev[0].request("SIGNAL_POLL")
     logger.info("STA SIGNAL_POLL:\n" + res.strip())
@@ -63,7 +63,7 @@ def test_ap_ht40_scan(dev, apdev):
 
     if 'supp_op_classes' not in sta or len(sta['supp_op_classes']) < 2:
         raise Exception("No Supported Operating Classes information for STA")
-    opclass = int(sta['supp_op_classes'][0:2], 16)
+    opclass = int(sta['supp_op_classes'][:2], 16)
     if opclass != 84:
         raise Exception("Unexpected Current Operating Class from STA: %d" % opclass)
 
@@ -112,8 +112,8 @@ def test_ap_ht40_scan_conflict(dev, apdev):
     if state != "HT_SCAN":
         time.sleep(0.1)
         state = hapd.get_status_field("state")
-        if state != "HT_SCAN":
-            raise Exception("Unexpected interface state - expected HT_SCAN")
+    if state != "HT_SCAN":
+        raise Exception("Unexpected interface state - expected HT_SCAN")
 
     ev = hapd.wait_event(["AP-ENABLED"], timeout=10)
     if not ev:
@@ -131,7 +131,7 @@ def test_ap_ht40_scan_conflict(dev, apdev):
         raise Exception("Unexpected primary channel")
     sec = hapd.get_status_field("secondary_channel")
     if sec != "0":
-        raise Exception("Unexpected secondary channel: " + sec)
+        raise Exception(f"Unexpected secondary channel: {sec}")
 
     dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
 
@@ -153,8 +153,8 @@ def test_ap_ht40_scan_conflict2(dev, apdev):
     if state != "HT_SCAN":
         time.sleep(0.1)
         state = hapd.get_status_field("state")
-        if state != "HT_SCAN":
-            raise Exception("Unexpected interface state - expected HT_SCAN")
+    if state != "HT_SCAN":
+        raise Exception("Unexpected interface state - expected HT_SCAN")
 
     ev = hapd.wait_event(["AP-ENABLED"], timeout=10)
     if not ev:
@@ -172,7 +172,7 @@ def test_ap_ht40_scan_conflict2(dev, apdev):
         raise Exception("Unexpected primary channel")
     sec = hapd.get_status_field("secondary_channel")
     if sec != "0":
-        raise Exception("Unexpected secondary channel: " + sec)
+        raise Exception(f"Unexpected secondary channel: {sec}")
 
     dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
 
@@ -200,8 +200,8 @@ def test_ap_ht40_scan_not_affected(dev, apdev):
     if state != "HT_SCAN":
         time.sleep(0.1)
         state = hapd.get_status_field("state")
-        if state != "HT_SCAN":
-            raise Exception("Unexpected interface state - expected HT_SCAN")
+    if state != "HT_SCAN":
+        raise Exception("Unexpected interface state - expected HT_SCAN")
 
     ev = hapd.wait_event(["AP-ENABLED"], timeout=10)
     if not ev:
@@ -219,7 +219,7 @@ def test_ap_ht40_scan_not_affected(dev, apdev):
         raise Exception("Unexpected primary channel")
     sec = hapd.get_status_field("secondary_channel")
     if sec != "1":
-        raise Exception("Unexpected secondary channel: " + sec)
+        raise Exception(f"Unexpected secondary channel: {sec}")
 
     dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
 
@@ -240,8 +240,8 @@ def test_ap_ht40_scan_legacy_conflict(dev, apdev):
     if state != "HT_SCAN":
         time.sleep(0.1)
         state = hapd.get_status_field("state")
-        if state != "HT_SCAN":
-            raise Exception("Unexpected interface state - expected HT_SCAN")
+    if state != "HT_SCAN":
+        raise Exception("Unexpected interface state - expected HT_SCAN")
 
     ev = hapd.wait_event(["AP-ENABLED"], timeout=10)
     if not ev:
@@ -253,13 +253,13 @@ def test_ap_ht40_scan_legacy_conflict(dev, apdev):
 
     freq = hapd.get_status_field("freq")
     if freq != "2432":
-        raise Exception("Unexpected frequency: " + freq)
+        raise Exception(f"Unexpected frequency: {freq}")
     pri = hapd.get_status_field("channel")
     if pri != "5":
-        raise Exception("Unexpected primary channel: " + pri)
+        raise Exception(f"Unexpected primary channel: {pri}")
     sec = hapd.get_status_field("secondary_channel")
     if sec != "0":
-        raise Exception("Unexpected secondary channel: " + sec)
+        raise Exception(f"Unexpected secondary channel: {sec}")
 
     dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
 
@@ -280,8 +280,8 @@ def test_ap_ht40_scan_ht20_conflict(dev, apdev):
     if state != "HT_SCAN":
         time.sleep(0.1)
         state = hapd.get_status_field("state")
-        if state != "HT_SCAN":
-            raise Exception("Unexpected interface state - expected HT_SCAN")
+    if state != "HT_SCAN":
+        raise Exception("Unexpected interface state - expected HT_SCAN")
 
     ev = hapd.wait_event(["AP-ENABLED"], timeout=10)
     if not ev:
@@ -293,13 +293,13 @@ def test_ap_ht40_scan_ht20_conflict(dev, apdev):
 
     freq = hapd.get_status_field("freq")
     if freq != "2432":
-        raise Exception("Unexpected frequency: " + freq)
+        raise Exception(f"Unexpected frequency: {freq}")
     pri = hapd.get_status_field("channel")
     if pri != "5":
-        raise Exception("Unexpected primary channel: " + pri)
+        raise Exception(f"Unexpected primary channel: {pri}")
     sec = hapd.get_status_field("secondary_channel")
     if sec != "0":
-        raise Exception("Unexpected secondary channel: " + sec)
+        raise Exception(f"Unexpected secondary channel: {sec}")
 
     dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
 
@@ -320,8 +320,8 @@ def test_ap_ht40_scan_intolerant(dev, apdev):
     if state != "HT_SCAN":
         time.sleep(0.1)
         state = hapd.get_status_field("state")
-        if state != "HT_SCAN":
-            raise Exception("Unexpected interface state - expected HT_SCAN")
+    if state != "HT_SCAN":
+        raise Exception("Unexpected interface state - expected HT_SCAN")
 
     ev = hapd.wait_event(["AP-ENABLED"], timeout=10)
     if not ev:
@@ -333,13 +333,13 @@ def test_ap_ht40_scan_intolerant(dev, apdev):
 
     freq = hapd.get_status_field("freq")
     if freq != "2412":
-        raise Exception("Unexpected frequency: " + freq)
+        raise Exception(f"Unexpected frequency: {freq}")
     pri = hapd.get_status_field("channel")
     if pri != "1":
-        raise Exception("Unexpected primary channel: " + pri)
+        raise Exception(f"Unexpected primary channel: {pri}")
     sec = hapd.get_status_field("secondary_channel")
     if sec != "0":
-        raise Exception("Unexpected secondary channel: " + sec)
+        raise Exception(f"Unexpected secondary channel: {sec}")
 
     dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
 
@@ -360,8 +360,8 @@ def test_ap_ht40_scan_match(dev, apdev):
     if state != "HT_SCAN":
         time.sleep(0.1)
         state = hapd.get_status_field("state")
-        if state != "HT_SCAN":
-            raise Exception("Unexpected interface state - expected HT_SCAN")
+    if state != "HT_SCAN":
+        raise Exception("Unexpected interface state - expected HT_SCAN")
 
     ev = hapd.wait_event(["AP-ENABLED"], timeout=10)
     if not ev:
@@ -379,7 +379,7 @@ def test_ap_ht40_scan_match(dev, apdev):
         raise Exception("Unexpected primary channel")
     sec = hapd.get_status_field("secondary_channel")
     if sec != "-1":
-        raise Exception("Unexpected secondary channel: " + sec)
+        raise Exception(f"Unexpected secondary channel: {sec}")
 
     dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
 
@@ -406,8 +406,8 @@ def test_ap_ht40_5ghz_match(dev, apdev):
         if state != "HT_SCAN":
             time.sleep(0.1)
             state = hapd.get_status_field("state")
-            if state != "HT_SCAN":
-                raise Exception("Unexpected interface state - expected HT_SCAN")
+        if state != "HT_SCAN":
+            raise Exception("Unexpected interface state - expected HT_SCAN")
 
         ev = hapd.wait_event(["AP-ENABLED"], timeout=10)
         if not ev:
@@ -425,7 +425,7 @@ def test_ap_ht40_5ghz_match(dev, apdev):
             raise Exception("Unexpected primary channel")
         sec = hapd.get_status_field("secondary_channel")
         if sec != "1":
-            raise Exception("Unexpected secondary channel: " + sec)
+            raise Exception(f"Unexpected secondary channel: {sec}")
 
         dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
     finally:
@@ -460,8 +460,8 @@ def test_ap_ht40_5ghz_switch(dev, apdev):
         if state != "HT_SCAN":
             time.sleep(0.1)
             state = hapd.get_status_field("state")
-            if state != "HT_SCAN":
-                raise Exception("Unexpected interface state - expected HT_SCAN")
+        if state != "HT_SCAN":
+            raise Exception("Unexpected interface state - expected HT_SCAN")
 
         ev = hapd.wait_event(["AP-ENABLED"], timeout=10)
         if not ev:
@@ -473,13 +473,13 @@ def test_ap_ht40_5ghz_switch(dev, apdev):
 
         freq = hapd.get_status_field("freq")
         if freq != "5180":
-            raise Exception("Unexpected frequency: " + freq)
+            raise Exception(f"Unexpected frequency: {freq}")
         pri = hapd.get_status_field("channel")
         if pri != "36":
-            raise Exception("Unexpected primary channel: " + pri)
+            raise Exception(f"Unexpected primary channel: {pri}")
         sec = hapd.get_status_field("secondary_channel")
         if sec != "1":
-            raise Exception("Unexpected secondary channel: " + sec)
+            raise Exception(f"Unexpected secondary channel: {sec}")
 
         dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
     finally:
@@ -522,8 +522,8 @@ def test_ap_ht40_5ghz_switch2(dev, apdev):
         if state != "HT_SCAN":
             time.sleep(0.1)
             state = hapd.get_status_field("state")
-            if state != "HT_SCAN":
-                raise Exception("Unexpected interface state - expected HT_SCAN")
+        if state != "HT_SCAN":
+            raise Exception("Unexpected interface state - expected HT_SCAN")
 
         ev = hapd.wait_event(["AP-ENABLED"], timeout=10)
         if not ev:
@@ -535,13 +535,13 @@ def test_ap_ht40_5ghz_switch2(dev, apdev):
 
         freq = hapd.get_status_field("freq")
         if freq != "5180":
-            raise Exception("Unexpected frequency: " + freq)
+            raise Exception(f"Unexpected frequency: {freq}")
         pri = hapd.get_status_field("channel")
         if pri != "36":
-            raise Exception("Unexpected primary channel: " + pri)
+            raise Exception(f"Unexpected primary channel: {pri}")
         sec = hapd.get_status_field("secondary_channel")
         if sec != "1":
-            raise Exception("Unexpected secondary channel: " + sec)
+            raise Exception(f"Unexpected secondary channel: {sec}")
 
         dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
     finally:
@@ -605,7 +605,7 @@ def run_obss_scan(hapd, dev, ht40plus=False):
     if ev is None:
         raise Exception("Timed out while waiting for OBSS scan results")
     received = False
-    for i in range(0, 4):
+    for _ in range(4):
         frame = hapd.mgmt_rx(timeout=5)
         if frame is None:
             raise Exception("MGMT RX wait timed out")
@@ -614,7 +614,7 @@ def run_obss_scan(hapd, dev, ht40plus=False):
         payload = frame['payload']
         if len(payload) < 3:
             continue
-        (category, action, ie) = struct.unpack('BBB', payload[0:3])
+        (category, action, ie) = struct.unpack('BBB', payload[:3])
         if category != 4:
             continue
         if action != 0:
@@ -649,7 +649,7 @@ def test_obss_scan_40_intolerant(dev, apdev):
     if ev is None:
         raise Exception("Timed out while waiting for OBSS scan results")
     received = False
-    for i in range(0, 4):
+    for _ in range(4):
         frame = hapd.mgmt_rx(timeout=5)
         if frame is None:
             raise Exception("MGMT RX wait timed out")
@@ -658,7 +658,7 @@ def test_obss_scan_40_intolerant(dev, apdev):
         payload = frame['payload']
         if len(payload) < 3:
             continue
-        (category, action, ie) = struct.unpack('BBB', payload[0:3])
+        (category, action, ie) = struct.unpack('BBB', payload[:3])
         if category != 4:
             continue
         if action != 0:
@@ -691,7 +691,7 @@ def test_obss_coex_report_handling(dev, apdev):
              '0400480100490101', '0400480100490201ff',
              '040048010449020005']
     for msg in tests:
-        req = "MGMT_TX {} {} freq=2437 action={}".format(bssid, bssid, msg)
+        req = f"MGMT_TX {bssid} {bssid} freq=2437 action={msg}"
         if "OK" not in dev[0].request(req):
             raise Exception("Could not send management frame")
     time.sleep(0.5)
@@ -716,7 +716,7 @@ def test_obss_coex_report_handling1(dev, apdev):
 
     # 20/40 MHz co-ex report forcing 20 MHz channel
     msg = '040048010449020005'
-    req = "MGMT_TX {} {} freq=2437 action={}".format(bssid, bssid, msg)
+    req = f"MGMT_TX {bssid} {bssid} freq=2437 action={msg}"
     if "OK" not in dev[0].request(req):
         raise Exception("Could not send management frame")
     time.sleep(0.5)
@@ -725,7 +725,7 @@ def test_obss_coex_report_handling1(dev, apdev):
         raise Exception("AP did not move to 20 MHz channel")
 
     # No 20/40 MHz co-ex reports forcing 20 MHz channel during next interval
-    for i in range(20):
+    for _ in range(20):
         sec = hapd.get_status_field("secondary_channel")
         if sec == "1":
             break
@@ -751,7 +751,7 @@ def test_obss_coex_report_handling2(dev, apdev):
     # 20/40 MHz co-ex report that does not force a move to 20 MHz channel
     # (out of affected range and matching primary channel cases)
     msg = '0400' + '480100' + '49020001' + '49020006'
-    req = "MGMT_TX {} {} freq=2437 action={}".format(bssid, bssid, msg)
+    req = f"MGMT_TX {bssid} {bssid} freq=2437 action={msg}"
     if "OK" not in dev[0].request(req):
         raise Exception("Could not send management frame")
     time.sleep(0.5)
@@ -762,7 +762,7 @@ def test_obss_coex_report_handling2(dev, apdev):
     # 20/40 MHz co-ex report forcing 20 MHz channel
     # (out of affected range and in affected range but not matching primary)
     msg = '0400' + '480100' + '4903000105'
-    req = "MGMT_TX {} {} freq=2437 action={}".format(bssid, bssid, msg)
+    req = f"MGMT_TX {bssid} {bssid} freq=2437 action={msg}"
     if "OK" not in dev[0].request(req):
         raise Exception("Could not send management frame")
     time.sleep(0.5)
@@ -795,7 +795,7 @@ def test_olbc(dev, apdev):
 
     logger.info("Waiting for OLBC state to time out")
     cleared = False
-    for i in range(0, 15):
+    for _ in range(15):
         time.sleep(1)
         status = hapd.get_status()
         if status['olbc'] == '0' and status['olbc_ht'] == '0':
@@ -849,7 +849,7 @@ def test_olbc_5ghz(dev, apdev):
                   "wmm_enabled": "0"}
         hapd2 = hostapd.add_ap(apdev[1], params)
         found = False
-        for i in range(20):
+        for _ in range(20):
             time.sleep(0.1)
             status = hapd.get_status()
             logger.debug('olbc_ht: ' + status['olbc_ht'])
@@ -889,7 +889,7 @@ def test_ap_require_ht(dev, apdev):
     sta = hapd.get_sta(dev[0].own_addr())
     if 'supp_op_classes' not in sta or len(sta['supp_op_classes']) < 2:
         raise Exception("No Supported Operating Classes information for STA")
-    opclass = int(sta['supp_op_classes'][0:2], 16)
+    opclass = int(sta['supp_op_classes'][:2], 16)
     if opclass != 81:
         raise Exception("Unexpected Current Operating Class from STA: %d" % opclass)
 
@@ -1006,7 +1006,7 @@ def test_ap_ht_40mhz_intolerant_ap(dev, apdev):
 
     logger.info("Waiting for co-ex report from STA")
     ok = False
-    for i in range(4):
+    for _ in range(4):
         ev = dev[0].wait_event(['CTRL-EVENT-SCAN-RESULTS'], timeout=20)
         if ev is None:
             raise Exception("No OBSS scan seen")
@@ -1028,7 +1028,7 @@ def test_ap_ht_40mhz_intolerant_ap(dev, apdev):
 
     logger.info("Waiting for AP to move back to 40 MHz channel")
     ok = False
-    for i in range(0, 30):
+    for _ in range(30):
         time.sleep(1)
         if hapd.get_status_field("secondary_channel") == "-1":
             logger.info("AP moved to 40 MHz channel")
@@ -1223,11 +1223,11 @@ def test_prefer_ht20(dev, apdev):
 
     est = dev[0].get_bss(bssid)['est_throughput']
     if est != "54000":
-        raise Exception("Unexpected BSS0 est_throughput: " + est)
+        raise Exception(f"Unexpected BSS0 est_throughput: {est}")
 
     est = dev[0].get_bss(bssid2)['est_throughput']
     if est != "65000":
-        raise Exception("Unexpected BSS1 est_throughput: " + est)
+        raise Exception(f"Unexpected BSS1 est_throughput: {est}")
 
 def test_prefer_ht40(dev, apdev):
     """Preference on HT40 over HT20"""
@@ -1251,11 +1251,11 @@ def test_prefer_ht40(dev, apdev):
 
     est = dev[0].get_bss(bssid)['est_throughput']
     if est != "65000":
-        raise Exception("Unexpected BSS0 est_throughput: " + est)
+        raise Exception(f"Unexpected BSS0 est_throughput: {est}")
 
     est = dev[0].get_bss(bssid2)['est_throughput']
     if est != "135000":
-        raise Exception("Unexpected BSS1 est_throughput: " + est)
+        raise Exception(f"Unexpected BSS1 est_throughput: {est}")
 
 @remote_compatible
 def test_prefer_ht20_during_roam(dev, apdev):
@@ -1343,8 +1343,8 @@ def test_ap_ht40_scan_broken_ap(dev, apdev):
     if state != "HT_SCAN":
         time.sleep(0.1)
         state = hapd.get_status_field("state")
-        if state != "HT_SCAN":
-            raise Exception("Unexpected interface state - expected HT_SCAN")
+    if state != "HT_SCAN":
+        raise Exception("Unexpected interface state - expected HT_SCAN")
 
     ev = hapd.wait_event(["AP-ENABLED"], timeout=10)
     if not ev:
@@ -1356,13 +1356,13 @@ def test_ap_ht40_scan_broken_ap(dev, apdev):
 
     freq = hapd.get_status_field("freq")
     if freq != "2432":
-        raise Exception("Unexpected frequency: " + freq)
+        raise Exception(f"Unexpected frequency: {freq}")
     pri = hapd.get_status_field("channel")
     if pri != "5":
-        raise Exception("Unexpected primary channel: " + pri)
+        raise Exception(f"Unexpected primary channel: {pri}")
     sec = hapd.get_status_field("secondary_channel")
     if sec != "-1":
-        raise Exception("Unexpected secondary channel: " + sec)
+        raise Exception(f"Unexpected secondary channel: {sec}")
 
     dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
     dev[1].connect("legacy-20", key_mgmt="NONE", scan_freq="2442")
@@ -1387,13 +1387,13 @@ def run_op_class(dev, apdev, hw_mode, channel, country, ht_capab, sec_chan,
             raise HwsimSkip("Channel not supported")
         sec = hapd.get_status_field("secondary_channel")
         if sec != sec_chan:
-            raise Exception("Unexpected secondary_channel: " + sec)
+            raise Exception(f"Unexpected secondary_channel: {sec}")
         dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
         bss = dev[0].get_bss(hapd.own_addr())
         ie = parse_ie(bss['ie'])
         if 59 not in ie:
             raise Exception("Missing Supported Operating Classes element")
-        rx_opclass, = struct.unpack('B', ie[59][0:1])
+        rx_opclass, = struct.unpack('B', ie[59][:1])
         if rx_opclass != opclass:
             raise Exception("Unexpected operating class: %d" % rx_opclass)
         hapd.disable()
@@ -1479,13 +1479,13 @@ def test_ap_ht40_plus_minus1(dev, apdev):
 
     freq = hapd.get_status_field("freq")
     if freq != "2462":
-        raise Exception("Unexpected frequency: " + freq)
+        raise Exception(f"Unexpected frequency: {freq}")
     pri = hapd.get_status_field("channel")
     if pri != "11":
-        raise Exception("Unexpected primary channel: " + pri)
+        raise Exception(f"Unexpected primary channel: {pri}")
     sec = hapd.get_status_field("secondary_channel")
     if sec != "-1":
-        raise Exception("Unexpected secondary channel: " + sec)
+        raise Exception(f"Unexpected secondary channel: {sec}")
 
     dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
 
@@ -1499,13 +1499,13 @@ def test_ap_ht40_plus_minus2(dev, apdev):
 
     freq = hapd.get_status_field("freq")
     if freq != "2412":
-        raise Exception("Unexpected frequency: " + freq)
+        raise Exception(f"Unexpected frequency: {freq}")
     pri = hapd.get_status_field("channel")
     if pri != "1":
-        raise Exception("Unexpected primary channel: " + pri)
+        raise Exception(f"Unexpected primary channel: {pri}")
     sec = hapd.get_status_field("secondary_channel")
     if sec != "1":
-        raise Exception("Unexpected secondary channel: " + sec)
+        raise Exception(f"Unexpected secondary channel: {sec}")
 
     dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq=freq)
 
@@ -1519,11 +1519,11 @@ def test_ap_ht40_disable(dev, apdev):
 
     sec = hapd.get_status_field("secondary_channel")
     if sec != "-1":
-        raise Exception("Unexpected secondary channel: " + sec)
+        raise Exception(f"Unexpected secondary channel: {sec}")
 
     id = dev[0].connect("test-ht40", key_mgmt="NONE", scan_freq="2437")
     sig = dev[0].request("SIGNAL_POLL").splitlines()
-    logger.info("SIGNAL_POLL: " + str(sig))
+    logger.info(f"SIGNAL_POLL: {str(sig)}")
     if "WIDTH=40 MHz" not in sig:
         raise Exception("Station did not report 40 MHz bandwidth")
     dev[0].request("DISCONNECT")
@@ -1534,13 +1534,13 @@ def test_ap_ht40_disable(dev, apdev):
     hapd.enable()
     sec = hapd.get_status_field("secondary_channel")
     if sec != "0":
-        raise Exception("Unexpected secondary channel(2): " + sec)
+        raise Exception(f"Unexpected secondary channel(2): {sec}")
 
     dev[0].flush_scan_cache()
     dev[0].select_network(id, freq=2437)
     dev[0].wait_connected()
     sig = dev[0].request("SIGNAL_POLL").splitlines()
-    logger.info("SIGNAL_POLL: " + str(sig))
+    logger.info(f"SIGNAL_POLL: {str(sig)}")
     if "WIDTH=20 MHz" not in sig:
         raise Exception("Station did not report 20 MHz bandwidth")
 
@@ -1571,36 +1571,34 @@ def run_ap_ht_wmm(dev, apdev, country):
         wmm = ie[221]
         if len(wmm) != 24:
             raise Exception("Unexpected WMM IE length")
-        id, subtype, version, info, reserved = struct.unpack('>LBBBB', wmm[0:8])
+        id, subtype, version, info, reserved = struct.unpack('>LBBBB', wmm[:8])
         if id != 0x0050f202 or subtype != 1 or version != 1:
             raise Exception("Not a WMM IE")
-        ac = []
-        for i in range(4):
-            ac.append(struct.unpack('<BBH', wmm[8 + i * 4: 12 + i * 4]))
-        logger.info("WMM AC info: " + str(ac))
+        ac = [struct.unpack('<BBH', wmm[8 + i * 4: 12 + i * 4]) for i in range(4)]
+        logger.info(f"WMM AC info: {ac}")
 
         aifsn = (ac[0][0] & 0x0f, ac[1][0] & 0x0f,
                  ac[2][0] & 0x0f, ac[3][0] & 0x0f)
-        logger.info("AIFSN: " + str(aifsn))
+        logger.info(f"AIFSN: {aifsn}")
         if aifsn != (3, 7, 2, 2):
-            raise Exception("Unexpected AIFSN value: " + str(aifsn))
+            raise Exception(f"Unexpected AIFSN value: {aifsn}")
 
         ecw_min = (ac[0][1] & 0x0f, ac[1][1] & 0x0f,
                    ac[2][1] & 0x0f, ac[3][1] & 0x0f)
-        logger.info("ECW min: " + str(ecw_min))
+        logger.info(f"ECW min: {ecw_min}")
         if ecw_min != (4, 4, 3, 2):
-            raise Exception("Unexpected ECW min value: " + str(ecw_min))
+            raise Exception(f"Unexpected ECW min value: {ecw_min}")
 
         ecw_max = ((ac[0][1] & 0xf0) >> 4, (ac[1][1] & 0xf0) >> 4,
                    (ac[2][1] & 0xf0) >> 4, (ac[3][1] & 0xf0) >> 4)
-        logger.info("ECW max: " + str(ecw_max))
+        logger.info(f"ECW max: {ecw_max}")
         if ecw_max != (10, 10, 4, 3):
-            raise Exception("Unexpected ECW max value: " + str(ecw_max))
+            raise Exception(f"Unexpected ECW max value: {ecw_max}")
 
         txop = (ac[0][2], ac[1][2], ac[2][2], ac[3][2])
-        logger.info("TXOP: " + str(txop))
+        logger.info(f"TXOP: {txop}")
         if txop != (0, 0, 94, 47):
-            raise Exception("Unexpected TXOP value: " + str(txop))
+            raise Exception(f"Unexpected TXOP value: {txop}")
     finally:
         dev[0].request("DISCONNECT")
         if hapd:

@@ -40,7 +40,7 @@ def test_ap_track_sta(dev, apdev):
         clear_regdom_dev(dev, 3)
 
 def _test_ap_track_sta(dev, hapd, bssid, hapd2, bssid2):
-    for i in range(2):
+    for _ in range(2):
         dev[0].scan_for_bss(bssid, freq=2437, force_scan=True)
         dev[0].scan_for_bss(bssid2, freq=5200, force_scan=True)
         dev[1].scan_for_bss(bssid, freq=2437, force_scan=True)
@@ -114,8 +114,7 @@ def _test_ap_track_sta_no_probe_resp(dev, bssid, bssid2):
     dev[0].scan(freq=2437, type="ONLY")
     dev[0].scan(freq=2437, type="ONLY")
 
-    bss = dev[0].get_bss(bssid)
-    if bss:
+    if bss := dev[0].get_bss(bssid):
         ie = parse_ie(bss['ie'])
         # Check whether this is from a Beacon frame (TIM element included) since
         # it is possible that a Beacon frame was received during the active
@@ -165,9 +164,9 @@ def _test_ap_track_sta_no_auth(dev, bssid, bssid2):
     if "CTRL-EVENT-CONNECTED" in ev:
         raise Exception("Unexpected connection")
     if "status_code=82" not in ev:
-        raise Exception("Unexpected rejection reason: " + ev)
+        raise Exception(f"Unexpected rejection reason: {ev}")
     if "ie=34" not in ev:
-        raise Exception("No Neighbor Report element: " + ev)
+        raise Exception(f"No Neighbor Report element: {ev}")
     dev[0].request("DISCONNECT")
 
 def test_ap_track_sta_no_auth_passive(dev, apdev):
@@ -210,7 +209,7 @@ def _test_ap_track_sta_no_auth_passive(dev, bssid, bssid2):
         if i == 9:
             raise Exception("AP not found with passive scans")
 
-    if "OK" not in dev[0].request("ANQP_GET " + bssid2 + " 258"):
+    if "OK" not in dev[0].request(f"ANQP_GET {bssid2} 258"):
         raise Exception("ANQP_GET command failed")
     ev = dev[0].wait_event(["RX-ANQP"], timeout=1)
     if ev is None or "Venue Name" not in ev:
@@ -225,7 +224,7 @@ def _test_ap_track_sta_no_auth_passive(dev, bssid, bssid2):
     if "CTRL-EVENT-CONNECTED" in ev:
         raise Exception("Unexpected connection")
     if "status_code=82" not in ev:
-        raise Exception("Unexpected rejection reason: " + ev)
+        raise Exception(f"Unexpected rejection reason: {ev}")
     dev[0].request("DISCONNECT")
 
 def test_ap_track_sta_force_5ghz(dev, apdev):
@@ -337,8 +336,8 @@ def _test_ap_track_taxonomy(dev, apdev):
     if "FAIL" not in hapd.request("SIGNATURE 22:33:44:55:66:77"):
         raise Exception("SIGNATURE failure not reported (2)")
 
-    res = hapd.request("SIGNATURE " + addr0)
-    logger.info("sta0: " + res)
+    res = hapd.request(f"SIGNATURE {addr0}")
+    logger.info(f"sta0: {res}")
     if not res.startswith("wifi4|probe:"):
         raise Exception("Unexpected SIGNATURE prefix")
     if "|assoc:" not in res:
@@ -346,8 +345,8 @@ def _test_ap_track_taxonomy(dev, apdev):
     if "wps:track_test" in res:
         raise Exception("Unexpected WPS model name")
 
-    res = hapd.request("SIGNATURE " + addr1)
-    logger.info("sta1: " + res)
+    res = hapd.request(f"SIGNATURE {addr1}")
+    logger.info(f"sta1: {res}")
     if not res.startswith("wifi4|probe:"):
         raise Exception("Unexpected SIGNATURE prefix")
     if "|assoc:" not in res:
@@ -359,8 +358,8 @@ def _test_ap_track_taxonomy(dev, apdev):
     if ",221(506f9a,9)," in res:
         raise Exception("Unexpected P2P IE info")
 
-    res = hapd.request("SIGNATURE " + addr)
-    logger.info("sta: " + res)
+    res = hapd.request(f"SIGNATURE {addr}")
+    logger.info(f"sta: {res}")
     if not res.startswith("wifi4|probe:"):
         raise Exception("Unexpected SIGNATURE prefix")
     if "|assoc:" not in res:
@@ -373,11 +372,11 @@ def _test_ap_track_taxonomy(dev, apdev):
         raise Exception("Missing P2P IE info")
 
     addr2 = dev[2].own_addr()
-    res = hapd.request("SIGNATURE " + addr2)
+    res = hapd.request(f"SIGNATURE {addr2}")
     if "FAIL" not in res:
         raise Exception("Unexpected SIGNATURE success for sta2 (1)")
 
-    for i in range(10):
+    for _ in range(10):
         dev[2].request("SCAN freq=2437 passive=1")
         ev = dev[2].wait_event(["CTRL-EVENT-SCAN-RESULTS"], timeout=10)
         if ev is None:
@@ -385,20 +384,20 @@ def _test_ap_track_taxonomy(dev, apdev):
         if dev[2].get_bss(bssid):
             break
 
-    res = hapd.request("SIGNATURE " + addr2)
+    res = hapd.request(f"SIGNATURE {addr2}")
     if "FAIL" not in res:
         raise Exception("Unexpected SIGNATURE success for sta2 (2)")
 
     dev[2].connect("track", key_mgmt="NONE", scan_freq="2437")
 
-    res = hapd.request("SIGNATURE " + addr2)
+    res = hapd.request(f"SIGNATURE {addr2}")
     if "FAIL" not in res and len(res) > 0:
         raise Exception("Unexpected SIGNATURE success for sta2 (3)")
 
     dev[2].scan_for_bss(bssid, freq=2437, force_scan=True)
 
-    res = hapd.request("SIGNATURE " + addr2)
-    logger.info("sta2: " + res)
+    res = hapd.request(f"SIGNATURE {addr2}")
+    logger.info(f"sta2: {res}")
     if not res.startswith("wifi4|probe:"):
         raise Exception("Unexpected SIGNATURE prefix")
     if "|assoc:" not in res:

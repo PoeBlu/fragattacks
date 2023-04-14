@@ -25,8 +25,7 @@ def dot11ccmp_get_pn(p):
 	pn = (pn << 8) | p.PN3
 	pn = (pn << 8) | p.PN2
 	pn = (pn << 8) | p.PN1
-	pn = (pn << 8) | p.PN0
-	return pn
+	return (pn << 8) | p.PN0
 
 def ccmp_get_nonce(priority, addr, pn):
 	return struct.pack("B", priority) + addr2bin(addr) + pn2bin(pn)
@@ -44,13 +43,9 @@ def ccmp_get_aad(p, amsdu_spp=False):
 	addr3 = addr2bin(p.addr3)
 	aad = fc + addr1 + addr2 + addr3 + sc
 	if Dot11QoS in p:
-		if not amsdu_spp:
-			# Everything except the TID is masked
-			aad += struct.pack("<H", p[Dot11QoS].TID)
-		else:
-			# TODO: Mask unrelated fields
-			aad += raw(p[Dot11QoS])[:2]
-
+		aad += (
+			raw(p[Dot11QoS])[:2] if amsdu_spp else struct.pack("<H", p[Dot11QoS].TID)
+		)
 	return aad
 
 def Raw(x):
@@ -66,7 +61,7 @@ def encrypt_ccmp(p, tk, pn, keyid=0, amsdu_spp=False):
 		payload = raw(p[Dot11QoS].payload)
 		p[Dot11QoS].remove_payload()
 		# Explicitly set TID so we can assume it's an integer
-		if p[Dot11QoS].TID == None:
+		if p[Dot11QoS].TID is None:
 			p[Dot11QoS].TID = 0
 		priority = p[Dot11QoS].TID
 	else:
@@ -148,7 +143,7 @@ def encrypt_wep(p, key, pn, keyid=0):
 		payload = raw(p[Dot11QoS].payload)
 		p[Dot11QoS].remove_payload()
 		# Explicitly set TID so we can assume it's an integer
-		if p[Dot11QoS].TID == None:
+		if p[Dot11QoS].TID is None:
 			p[Dot11QoS].TID = 0
 		priority = p[Dot11QoS].TID
 	else:
@@ -162,8 +157,5 @@ def encrypt_wep(p, key, pn, keyid=0):
 	cipher = ARC4.new(iv + key)
 	ciphertext = cipher.encrypt(payload)
 
-	# Construct packet ourselves to avoid scapy bugs
-	newp = p/iv/struct.pack("<B", keyid)/ciphertext
-
-	return newp
+	return p/iv/struct.pack("<B", keyid)/ciphertext
 

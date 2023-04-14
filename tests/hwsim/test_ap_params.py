@@ -38,9 +38,7 @@ def test_ap_fragmentation_rts_set_high(dev, apdev):
 def test_ap_fragmentation_open(dev, apdev):
     """Open AP with fragmentation threshold"""
     ssid = "fragmentation"
-    params = {}
-    params['ssid'] = ssid
-    params['fragm_threshold'] = "1000"
+    params = {'ssid': ssid, 'fragm_threshold': "1000"}
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
     hwsim_utils.test_connectivity(dev[0], hapd)
@@ -139,11 +137,9 @@ def test_ap_country(dev, apdev):
 def test_ap_acl_accept(dev, apdev):
     """MAC ACL accept list"""
     ssid = "acl"
-    params = {}
     filename = hostapd.acl_file(dev, apdev, 'hostapd.macaddr')
     hostapd.send_file(apdev[0], filename, filename)
-    params['ssid'] = ssid
-    params['accept_mac_file'] = filename
+    params = {'ssid': ssid, 'accept_mac_file': filename}
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].scan_for_bss(apdev[0]['bssid'], freq="2412")
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
@@ -164,11 +160,9 @@ def test_ap_acl_accept(dev, apdev):
 def test_ap_acl_deny(dev, apdev):
     """MAC ACL deny list"""
     ssid = "acl"
-    params = {}
     filename = hostapd.acl_file(dev, apdev, 'hostapd.macaddr')
     hostapd.send_file(apdev[0], filename, filename)
-    params['ssid'] = ssid
-    params['deny_mac_file'] = filename
+    params = {'ssid': ssid, 'deny_mac_file': filename}
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].scan_for_bss(apdev[0]['bssid'], freq="2412", passive=True)
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412", wait_connect=False)
@@ -183,17 +177,15 @@ def test_ap_acl_deny(dev, apdev):
 def test_ap_acl_mgmt(dev, apdev):
     """MAC ACL accept/deny management"""
     ssid = "acl"
-    params = {}
     filename = hostapd.acl_file(dev, apdev, 'hostapd.macaddr')
     hostapd.send_file(apdev[0], filename, filename)
-    params['ssid'] = ssid
-    params['deny_mac_file'] = filename
+    params = {'ssid': ssid, 'deny_mac_file': filename}
     hapd = hostapd.add_ap(apdev[0], params)
 
     accept = hapd.request("ACCEPT_ACL SHOW").splitlines()
-    logger.info("accept: " + str(accept))
+    logger.info(f"accept: {str(accept)}")
     deny = hapd.request("DENY_ACL SHOW").splitlines()
-    logger.info("deny: " + str(deny))
+    logger.info(f"deny: {str(deny)}")
     if len(accept) != 0:
         raise Exception("Unexpected number of accept entries")
     if len(deny) != 3:
@@ -205,9 +197,9 @@ def test_ap_acl_mgmt(dev, apdev):
     hapd.request("DENY_ACL ADD_MAC 22:33:44:55:66:88 VLAN_ID=2")
 
     accept = hapd.request("ACCEPT_ACL SHOW").splitlines()
-    logger.info("accept: " + str(accept))
+    logger.info(f"accept: {str(accept)}")
     deny = hapd.request("DENY_ACL SHOW").splitlines()
-    logger.info("deny: " + str(deny))
+    logger.info(f"deny: {str(deny)}")
     if len(accept) != 1:
         raise Exception("Unexpected number of accept entries (2)")
     if len(deny) != 4:
@@ -223,9 +215,9 @@ def test_ap_acl_mgmt(dev, apdev):
     hapd.request("DENY_ACL DEL_MAC 22:33:44:55:66:88")
 
     accept = hapd.request("ACCEPT_ACL SHOW").splitlines()
-    logger.info("accept: " + str(accept))
+    logger.info(f"accept: {str(accept)}")
     deny = hapd.request("DENY_ACL SHOW").splitlines()
-    logger.info("deny: " + str(deny))
+    logger.info(f"deny: {str(deny)}")
     if len(accept) != 0:
         raise Exception("Unexpected number of accept entries (3)")
     if len(deny) != 3:
@@ -237,9 +229,9 @@ def test_ap_acl_mgmt(dev, apdev):
     hapd.request("DENY_ACL CLEAR")
 
     accept = hapd.request("ACCEPT_ACL SHOW").splitlines()
-    logger.info("accept: " + str(accept))
+    logger.info(f"accept: {str(accept)}")
     deny = hapd.request("DENY_ACL SHOW").splitlines()
-    logger.info("deny: " + str(deny))
+    logger.info(f"deny: {str(deny)}")
     if len(accept) != 0:
         raise Exception("Unexpected number of accept entries (4)")
     if len(deny) != 0:
@@ -248,7 +240,7 @@ def test_ap_acl_mgmt(dev, apdev):
     dev[0].scan_for_bss(apdev[0]['bssid'], freq="2412")
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
     dev[0].dump_monitor()
-    hapd.request("DENY_ACL ADD_MAC " + dev[0].own_addr())
+    hapd.request(f"DENY_ACL ADD_MAC {dev[0].own_addr()}")
     dev[0].wait_disconnected()
     dev[0].request("DISCONNECT")
     if filename.startswith('/tmp/'):
@@ -273,16 +265,15 @@ def test_ap_wds_sta(dev, apdev):
         ev = hapd.wait_event(["WDS-STA-INTERFACE-ADDED"], timeout=10)
         if ev is None:
             raise Exception("No WDS-STA-INTERFACE-ADDED event seen")
-        if "sta_addr=" + dev[0].own_addr() not in ev:
-            raise Exception("No sta_addr match in " + ev)
-        if "ifname=" + hapd.ifname + ".sta" not in ev:
-            raise Exception("No ifname match in " + ev)
+        if f"sta_addr={dev[0].own_addr()}" not in ev:
+            raise Exception(f"No sta_addr match in {ev}")
+        if f"ifname={hapd.ifname}.sta" not in ev:
+            raise Exception(f"No ifname match in {ev}")
         sta = hapd.get_sta(dev[0].own_addr())
         if "wds_sta_ifname" not in sta:
             raise Exception("Missing wds_sta_ifname in STA data")
         if "ifname=" + sta['wds_sta_ifname'] not in ev:
-            raise Exception("wds_sta_ifname %s not in event: %s" %
-                            (sta['wds_sta_ifname'], ev))
+            raise Exception(f"wds_sta_ifname {sta['wds_sta_ifname']} not in event: {ev}")
         hwsim_utils.test_connectivity_iface(dev[0], hapd, "wds-br0",
                                             max_tries=15)
         dev[0].request("REATTACH")
@@ -320,16 +311,15 @@ def test_ap_wds_sta_eap(dev, apdev):
         ev = hapd.wait_event(["WDS-STA-INTERFACE-ADDED"], timeout=10)
         if ev is None:
             raise Exception("No WDS-STA-INTERFACE-ADDED event seen")
-        if "sta_addr=" + dev[0].own_addr() not in ev:
-            raise Exception("No sta_addr match in " + ev)
-        if "ifname=" + hapd.ifname + ".sta" not in ev:
-            raise Exception("No ifname match in " + ev)
+        if f"sta_addr={dev[0].own_addr()}" not in ev:
+            raise Exception(f"No sta_addr match in {ev}")
+        if f"ifname={hapd.ifname}.sta" not in ev:
+            raise Exception(f"No ifname match in {ev}")
         sta = hapd.get_sta(dev[0].own_addr())
         if "wds_sta_ifname" not in sta:
             raise Exception("Missing wds_sta_ifname in STA data")
         if "ifname=" + sta['wds_sta_ifname'] not in ev:
-            raise Exception("wds_sta_ifname %s not in event: %s" %
-                            (sta['wds_sta_ifname'], ev))
+            raise Exception(f"wds_sta_ifname {sta['wds_sta_ifname']} not in event: {ev}")
         hwsim_utils.test_connectivity_iface(dev[0], hapd, "wds-br0",
                                             max_tries=15)
     finally:
@@ -340,10 +330,7 @@ def test_ap_wds_sta_eap(dev, apdev):
 def test_ap_wds_sta_open(dev, apdev):
     """Open AP with STA using 4addr mode"""
     ssid = "test-wds-open"
-    params = {}
-    params['ssid'] = ssid
-    params['wds_sta'] = "1"
-    params['wds_bridge'] = "wds-br0"
+    params = {'ssid': ssid, 'wds_sta': "1", 'wds_bridge': "wds-br0"}
     hapd = hostapd.add_ap(apdev[0], params)
 
     try:
@@ -373,12 +360,13 @@ def test_ap_wds_sta_wep(dev, apdev):
     """WEP AP with STA using 4addr mode"""
     check_wep_capa(dev[0])
     ssid = "test-wds-wep"
-    params = {}
-    params['ssid'] = ssid
-    params["ieee80211n"] = "0"
-    params['wep_key0'] = '"hello"'
-    params['wds_sta'] = "1"
-    params['wds_bridge'] = "wds-br0"
+    params = {
+        'ssid': ssid,
+        "ieee80211n": "0",
+        'wep_key0': '"hello"',
+        'wds_sta': "1",
+        'wds_bridge': "wds-br0",
+    }
     hapd = hostapd.add_ap(apdev[0], params)
 
     try:
@@ -448,9 +436,10 @@ def test_ap_inactivity_disconnect(dev, apdev):
 def test_ap_basic_rates(dev, apdev):
     """Open AP with lots of basic rates"""
     ssid = "basic rates"
-    params = {}
-    params['ssid'] = ssid
-    params['basic_rates'] = "10 20 55 110 60 90 120 180 240 360 480 540"
+    params = {
+        'ssid': ssid,
+        'basic_rates': "10 20 55 110 60 90 120 180 240 360 480 540",
+    }
     hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
 
@@ -458,23 +447,22 @@ def test_ap_basic_rates(dev, apdev):
 def test_ap_short_preamble(dev, apdev):
     """Open AP with short preamble"""
     ssid = "short preamble"
-    params = {}
-    params['ssid'] = ssid
-    params['preamble'] = "1"
+    params = {'ssid': ssid, 'preamble': "1"}
     hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
 
 def test_ap_spectrum_management_required(dev, apdev):
     """Open AP with spectrum management required"""
     ssid = "spectrum mgmt"
-    params = {}
-    params['ssid'] = ssid
-    params["country_code"] = "JP"
-    params["hw_mode"] = "a"
-    params["channel"] = "36"
-    params["ieee80211d"] = "1"
-    params["local_pwr_constraint"] = "3"
-    params['spectrum_mgmt_required'] = "1"
+    params = {
+        'ssid': ssid,
+        "country_code": "JP",
+        "hw_mode": "a",
+        "channel": "36",
+        "ieee80211d": "1",
+        "local_pwr_constraint": "3",
+        'spectrum_mgmt_required': "1",
+    }
     try:
         hapd = None
         hapd = hostapd.add_ap(apdev[0], params)
@@ -492,9 +480,7 @@ def test_ap_spectrum_management_required(dev, apdev):
 def test_ap_max_listen_interval(dev, apdev):
     """Open AP with maximum listen interval limit"""
     ssid = "listen"
-    params = {}
-    params['ssid'] = ssid
-    params['max_listen_interval'] = "1"
+    params = {'ssid': ssid, 'max_listen_interval': "1"}
     hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412", wait_connect=False)
     ev = dev[0].wait_event(["CTRL-EVENT-ASSOC-REJECT"])
@@ -507,9 +493,7 @@ def test_ap_max_listen_interval(dev, apdev):
 def test_ap_max_num_sta(dev, apdev):
     """Open AP with maximum STA count"""
     ssid = "max"
-    params = {}
-    params['ssid'] = ssid
-    params['max_num_sta'] = "1"
+    params = {'ssid': ssid, 'max_num_sta': "1"}
     hostapd.add_ap(apdev[0], params)
     dev[1].connect(ssid, key_mgmt="NONE", scan_freq="2412")
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412", wait_connect=False)
@@ -522,11 +506,12 @@ def test_ap_max_num_sta_no_probe_resp(dev, apdev, params):
     logdir = params['logdir']
     dev[0].flush_scan_cache()
     ssid = "max"
-    params = {}
-    params['ssid'] = ssid
-    params['beacon_int'] = "2000"
-    params['max_num_sta'] = "1"
-    params['no_probe_resp_if_max_sta'] = "1"
+    params = {
+        'ssid': ssid,
+        'beacon_int': "2000",
+        'max_num_sta': "1",
+        'no_probe_resp_if_max_sta': "1",
+    }
     hostapd.add_ap(apdev[0], params)
     dev[1].connect(ssid, key_mgmt="NONE", scan_freq="2412")
     dev[0].scan(freq=2412, type="ONLY")
@@ -534,32 +519,35 @@ def test_ap_max_num_sta_no_probe_resp(dev, apdev, params):
     seen = dev[0].get_bss(apdev[0]['bssid']) != None
     dev[1].scan(freq=2412, type="ONLY")
     if seen:
-        out = run_tshark(os.path.join(logdir, "hwsim0.pcapng"),
-                         "wlan.fc.type_subtype == 5", ["wlan.da"])
-        if out:
+        if out := run_tshark(
+            os.path.join(logdir, "hwsim0.pcapng"),
+            "wlan.fc.type_subtype == 5",
+            ["wlan.da"],
+        ):
             if dev[0].own_addr() not in out:
                 # Discovery happened through Beacon frame reception. That's not
                 # an error case.
                 seen = False
             if dev[1].own_addr() not in out:
                 raise Exception("No Probe Response frames to dev[1] seen")
-        if seen:
-            raise Exception("AP found unexpectedly")
+    if seen:
+        raise Exception("AP found unexpectedly")
 
 @remote_compatible
 def test_ap_tx_queue_params(dev, apdev):
     """Open AP with TX queue params set"""
     ssid = "tx"
-    params = {}
-    params['ssid'] = ssid
-    params['tx_queue_data2_aifs'] = "4"
-    params['tx_queue_data2_cwmin'] = "7"
-    params['tx_queue_data2_cwmax'] = "1023"
-    params['tx_queue_data2_burst'] = "4.2"
-    params['tx_queue_data1_aifs'] = "4"
-    params['tx_queue_data1_cwmin'] = "7"
-    params['tx_queue_data1_cwmax'] = "1023"
-    params['tx_queue_data1_burst'] = "2"
+    params = {
+        'ssid': ssid,
+        'tx_queue_data2_aifs': "4",
+        'tx_queue_data2_cwmin': "7",
+        'tx_queue_data2_cwmax': "1023",
+        'tx_queue_data2_burst': "4.2",
+        'tx_queue_data1_aifs': "4",
+        'tx_queue_data1_cwmin': "7",
+        'tx_queue_data1_cwmax': "1023",
+        'tx_queue_data1_burst': "2",
+    }
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
     hwsim_utils.test_connectivity(dev[0], hapd)
@@ -567,18 +555,18 @@ def test_ap_tx_queue_params(dev, apdev):
 def test_ap_tx_queue_params_invalid(dev, apdev):
     """Invalid TX queue params set (cwmin/cwmax)"""
     ssid = "tx"
-    params = {}
-    params['ssid'] = ssid
-    params['tx_queue_data2_aifs'] = "4"
-    params['tx_queue_data2_cwmin'] = "7"
-    params['tx_queue_data2_cwmax'] = "1023"
-    params['tx_queue_data2_burst'] = "4.2"
-    params['wmm_ac_bk_cwmin'] = "4"
-    params['wmm_ac_bk_cwmax'] = "10"
-    params['wmm_ac_bk_aifs'] = "7"
-    params['wmm_ac_bk_txop_limit'] = "0"
-    params['wmm_ac_bk_acm'] = "0"
-
+    params = {
+        'ssid': ssid,
+        'tx_queue_data2_aifs': "4",
+        'tx_queue_data2_cwmin': "7",
+        'tx_queue_data2_cwmax': "1023",
+        'tx_queue_data2_burst': "4.2",
+        'wmm_ac_bk_cwmin': "4",
+        'wmm_ac_bk_cwmax': "10",
+        'wmm_ac_bk_aifs': "7",
+        'wmm_ac_bk_txop_limit': "0",
+        'wmm_ac_bk_acm': "0",
+    }
     hapd = hostapd.add_ap(apdev[0], params)
 
     # Valid WMM change
@@ -732,9 +720,7 @@ def test_ap_missing_psk(dev, apdev):
         hostapd.add_ap(apdev[0], params)
         raise Exception("AP setup succeeded unexpectedly")
     except Exception as e:
-        if "Failed to enable hostapd" in str(e):
-            pass
-        else:
+        if "Failed to enable hostapd" not in str(e):
             raise
 
 def test_ap_eapol_version(dev, apdev):
@@ -765,12 +751,12 @@ def test_ap_eapol_version(dev, apdev):
     dev[0].wait_connected()
     dev[1].wait_connected()
 
-    ver1 = ev1.split(' ')[2][0:2]
-    ver2 = ev2.split(' ')[2][0:2]
+    ver1 = ev1.split(' ')[2][:2]
+    ver2 = ev2.split(' ')[2][:2]
     if ver1 != "02":
-        raise Exception("Unexpected default eapol_version: " + ver1)
+        raise Exception(f"Unexpected default eapol_version: {ver1}")
     if ver2 != "01":
-        raise Exception("eapol_version did not match configuration: " + ver2)
+        raise Exception(f"eapol_version did not match configuration: {ver2}")
 
 def test_ap_dtim_period(dev, apdev):
     """DTIM period configuration"""
@@ -779,7 +765,7 @@ def test_ap_dtim_period(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], params)
     bssid = hapd.own_addr()
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
-    for i in range(10):
+    for _ in range(10):
         dev[0].scan(freq="2412")
         bss = dev[0].get_bss(bssid)
         if 'beacon_ie' in bss:
@@ -791,7 +777,7 @@ def test_ap_dtim_period(dev, apdev):
     ie = parse_ie(bss['beacon_ie'])
     if 5 not in ie:
         raise Exception("TIM element missing")
-    count, period = struct.unpack('BB', ie[5][0:2])
+    count, period = struct.unpack('BB', ie[5][:2])
     logger.info("DTIM count %d  DTIM period %d" % (count, period))
     if period != 10:
         raise Exception("Unexpected DTIM period: %d" % period)

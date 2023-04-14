@@ -167,16 +167,15 @@ def check_tdls_link(sta0, sta1, connected=True):
     addr1 = sta1.own_addr()
     status0 = sta0.tdls_link_status(addr1).rstrip()
     status1 = sta1.tdls_link_status(addr0).rstrip()
-    logger.info("%s: %s" % (sta0.ifname, status0))
-    logger.info("%s: %s" % (sta1.ifname, status1))
+    logger.info(f"{sta0.ifname}: {status0}")
+    logger.info(f"{sta1.ifname}: {status1}")
     if status0 != status1:
         raise Exception("TDLS link status differs between stations")
     if "status: connected" in status0:
         if not connected:
             raise Exception("Expected TDLS link status NOT to be connected")
-    else:
-        if connected:
-            raise Exception("Expected TDLS link status to be connected")
+    elif connected:
+        raise Exception("Expected TDLS link status to be connected")
 
 @remote_compatible
 def test_ap_tdls_discovery(dev, apdev):
@@ -184,7 +183,7 @@ def test_ap_tdls_discovery(dev, apdev):
     hapd = start_ap_wpa2_psk(apdev[0])
     wlantest_setup(hapd)
     connect_2sta_wpa2_psk(dev, hapd)
-    dev[0].request("TDLS_DISCOVER " + dev[1].p2p_interface_addr())
+    dev[0].request(f"TDLS_DISCOVER {dev[1].p2p_interface_addr()}")
     time.sleep(0.2)
 
 def test_ap_wpa2_tdls(dev, apdev):
@@ -433,9 +432,9 @@ def test_ap_open_tdls_vht80(dev, apdev):
         connect_2sta_open(dev, hapd, scan_freq="5180")
         sig = dev[0].request("SIGNAL_POLL").splitlines()
         if "WIDTH=80 MHz" not in sig:
-            raise Exception("Unexpected SIGNAL_POLL value(2): " + str(sig))
+            raise Exception(f"Unexpected SIGNAL_POLL value(2): {str(sig)}")
         setup_tdls(dev[0], dev[1], hapd)
-        for i in range(10):
+        for _ in range(10):
             check_connectivity(dev[0], dev[1], hapd)
         for i in range(2):
             cmd = subprocess.Popen(['iw', dev[0].ifname, 'station', 'dump'],
@@ -444,9 +443,12 @@ def test_ap_open_tdls_vht80(dev, apdev):
             cmd.stdout.close()
             logger.info("Station dump on dev[%d]:\n%s" % (i, res.decode()))
     except Exception as e:
-        if isinstance(e, Exception) and str(e) == "AP startup failed":
-            if not vht_supported():
-                raise HwsimSkip("80/160 MHz channel not supported in regulatory information")
+        if (
+            isinstance(e, Exception)
+            and str(e) == "AP startup failed"
+            and not vht_supported()
+        ):
+            raise HwsimSkip("80/160 MHz channel not supported in regulatory information")
         raise
     finally:
         tdls_clear_reg(hapd, dev)
@@ -471,15 +473,15 @@ def test_ap_open_tdls_vht80plus80(dev, apdev):
         connect_2sta_open(dev, hapd, scan_freq="5180")
         sig = dev[0].request("SIGNAL_POLL").splitlines()
         if "FREQUENCY=5180" not in sig:
-            raise Exception("Unexpected SIGNAL_POLL value(1): " + str(sig))
+            raise Exception(f"Unexpected SIGNAL_POLL value(1): {str(sig)}")
         if "WIDTH=80+80 MHz" not in sig:
-            raise Exception("Unexpected SIGNAL_POLL value(2): " + str(sig))
+            raise Exception(f"Unexpected SIGNAL_POLL value(2): {str(sig)}")
         if "CENTER_FRQ1=5210" not in sig:
-            raise Exception("Unexpected SIGNAL_POLL value(3): " + str(sig))
+            raise Exception(f"Unexpected SIGNAL_POLL value(3): {str(sig)}")
         if "CENTER_FRQ2=5775" not in sig:
-            raise Exception("Unexpected SIGNAL_POLL value(4): " + str(sig))
+            raise Exception(f"Unexpected SIGNAL_POLL value(4): {str(sig)}")
         setup_tdls(dev[0], dev[1], hapd)
-        for i in range(10):
+        for _ in range(10):
             check_connectivity(dev[0], dev[1], hapd)
         for i in range(2):
             cmd = subprocess.Popen(['iw', dev[0].ifname, 'station', 'dump'],
@@ -488,9 +490,12 @@ def test_ap_open_tdls_vht80plus80(dev, apdev):
             cmd.stdout.close()
             logger.info("Station dump on dev[%d]:\n%s" % (i, res.decode()))
     except Exception as e:
-        if isinstance(e, Exception) and str(e) == "AP startup failed":
-            if not vht_supported():
-                raise HwsimSkip("80/160 MHz channel not supported in regulatory information")
+        if (
+            isinstance(e, Exception)
+            and str(e) == "AP startup failed"
+            and not vht_supported()
+        ):
+            raise HwsimSkip("80/160 MHz channel not supported in regulatory information")
         raise
     finally:
         tdls_clear_reg(hapd, dev)
@@ -522,9 +527,9 @@ def test_ap_open_tdls_vht160(dev, apdev):
         connect_2sta_open(dev, hapd, scan_freq="5520")
         sig = dev[0].request("SIGNAL_POLL").splitlines()
         if "WIDTH=160 MHz" not in sig:
-            raise Exception("Unexpected SIGNAL_POLL value(2): " + str(sig))
+            raise Exception(f"Unexpected SIGNAL_POLL value(2): {str(sig)}")
         setup_tdls(dev[0], dev[1], hapd)
-        for i in range(10):
+        for _ in range(10):
             check_connectivity(dev[0], dev[1], hapd)
         for i in range(2):
             cmd = subprocess.Popen(['iw', dev[0].ifname, 'station', 'dump'],
@@ -533,9 +538,12 @@ def test_ap_open_tdls_vht160(dev, apdev):
             cmd.stdout.close()
             logger.info("Station dump on dev[%d]:\n%s" % (i, res.decode()))
     except Exception as e:
-        if isinstance(e, Exception) and str(e) == "AP startup failed":
-            if not vht_supported():
-                raise HwsimSkip("80/160 MHz channel not supported in regulatory information")
+        if (
+            isinstance(e, Exception)
+            and str(e) == "AP startup failed"
+            and not vht_supported()
+        ):
+            raise HwsimSkip("80/160 MHz channel not supported in regulatory information")
         raise
     finally:
         tdls_clear_reg(hapd, dev)
@@ -550,11 +558,17 @@ def test_tdls_chan_switch(dev, apdev):
     wlantest_setup(hapd)
     connect_2sta_open(dev, hapd)
     setup_tdls(dev[0], dev[1], hapd)
-    if "OK" not in dev[0].request("TDLS_CHAN_SWITCH " + dev[1].own_addr() + " 81 2462"):
+    if "OK" not in dev[0].request(
+        f"TDLS_CHAN_SWITCH {dev[1].own_addr()} 81 2462"
+    ):
         raise Exception("Failed to enable TDLS channel switching")
-    if "OK" not in dev[0].request("TDLS_CANCEL_CHAN_SWITCH " + dev[1].own_addr()):
+    if "OK" not in dev[0].request(
+        f"TDLS_CANCEL_CHAN_SWITCH {dev[1].own_addr()}"
+    ):
         raise Exception("Could not disable TDLS channel switching")
-    if "FAIL" not in dev[0].request("TDLS_CANCEL_CHAN_SWITCH " + dev[1].own_addr()):
+    if "FAIL" not in dev[0].request(
+        f"TDLS_CANCEL_CHAN_SWITCH {dev[1].own_addr()}"
+    ):
         raise Exception("TDLS_CANCEL_CHAN_SWITCH accepted even though channel switching was already disabled")
     if "FAIL" not in dev[0].request("TDLS_CHAN_SWITCH foo 81 2462"):
         raise Exception("Invalid TDLS channel switching command accepted")
@@ -577,7 +591,7 @@ def test_ap_tdls_prohibit(dev, apdev):
     hapd = hostapd.add_ap(apdev[0], {"ssid": "test-open",
                                      "tdls_prohibit": "1"})
     connect_2sta_open(dev, hapd)
-    if "FAIL" not in dev[0].request("TDLS_SETUP " + dev[1].own_addr()):
+    if "FAIL" not in dev[0].request(f"TDLS_SETUP {dev[1].own_addr()}"):
         raise Exception("TDLS_SETUP accepted unexpectedly")
 
 def test_ap_tdls_chan_switch_prohibit(dev, apdev):
@@ -603,15 +617,15 @@ def _test_ap_open_tdls_external_control(dev, apdev):
     addr1 = dev[1].own_addr()
 
     dev[0].set("tdls_external_control", "1")
-    if "FAIL" in dev[0].request("TDLS_SETUP " + addr1):
+    if "FAIL" in dev[0].request(f"TDLS_SETUP {addr1}"):
         # tdls_external_control not supported; try without it
         dev[0].set("tdls_external_control", "0")
-        if "FAIL" in dev[0].request("TDLS_SETUP " + addr1):
+        if "FAIL" in dev[0].request(f"TDLS_SETUP {addr1}"):
             raise Exception("TDLS_SETUP failed")
     connected = False
-    for i in range(50):
-        res0 = dev[0].request("TDLS_LINK_STATUS " + addr1)
-        res1 = dev[1].request("TDLS_LINK_STATUS " + addr0)
+    for _ in range(50):
+        res0 = dev[0].request(f"TDLS_LINK_STATUS {addr1}")
+        res1 = dev[1].request(f"TDLS_LINK_STATUS {addr0}")
         if "TDLS link status: connected" in res0 and "TDLS link status: connected" in res1:
             connected = True
             break
@@ -620,14 +634,14 @@ def _test_ap_open_tdls_external_control(dev, apdev):
         raise Exception("TDLS setup did not complete")
 
     dev[0].set("tdls_external_control", "1")
-    if "FAIL" in dev[0].request("TDLS_TEARDOWN " + addr1):
+    if "FAIL" in dev[0].request(f"TDLS_TEARDOWN {addr1}"):
         # tdls_external_control not supported; try without it
         dev[0].set("tdls_external_control", "0")
-        if "FAIL" in dev[0].request("TDLS_TEARDOWN " + addr1):
+        if "FAIL" in dev[0].request(f"TDLS_TEARDOWN {addr1}"):
             raise Exception("TDLS_TEARDOWN failed")
-    for i in range(50):
-        res0 = dev[0].request("TDLS_LINK_STATUS " + addr1)
-        res1 = dev[1].request("TDLS_LINK_STATUS " + addr0)
+    for _ in range(50):
+        res0 = dev[0].request(f"TDLS_LINK_STATUS {addr1}")
+        res1 = dev[1].request(f"TDLS_LINK_STATUS {addr0}")
         if "TDLS link status: connected" not in res0 and "TDLS link status: connected" not in res1:
             connected = False
             break

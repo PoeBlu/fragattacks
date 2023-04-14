@@ -24,10 +24,7 @@ NLMSG_MIN_TYPE	= 0x10
 class Attr(object):
     def __init__(self, attr_type, data, *values):
         self._type = attr_type
-        if len(values):
-            self._data = struct.pack(data, *values)
-        else:
-            self._data = data
+        self._data = struct.pack(data, *values) if len(values) else data
 
     def _dump(self):
         hdr = struct.pack("HH", len(self._data) + 4, self._type)
@@ -79,9 +76,7 @@ class Nested(Attr):
         self.type = attr_type
 
     def _dump(self):
-        contents = []
-        for attr in self.attrs:
-            contents.append(attr._dump())
+        contents = [attr._dump() for attr in self.attrs]
         contents = ''.join(contents)
         length = len(contents)
         hdr = struct.pack("HH", length+4, self.type)

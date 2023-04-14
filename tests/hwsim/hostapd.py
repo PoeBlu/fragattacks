@@ -44,25 +44,20 @@ class HostapdGlobal:
         else:
             self.ctrl = wpaspy.Ctrl(hostname, port)
             self.mon = wpaspy.Ctrl(hostname, port)
-            self.dbg = hostname + "/" + str(port)
+            self.dbg = f"{hostname}/{port}"
         self.mon.attach()
 
     def cmd_execute(self, cmd_array, shell=False):
-        if self.hostname is None:
-            if shell:
-                cmd = ' '.join(cmd_array)
-            else:
-                cmd = cmd_array
-            proc = subprocess.Popen(cmd, stderr=subprocess.STDOUT,
-                                    stdout=subprocess.PIPE, shell=shell)
-            out = proc.communicate()[0]
-            ret = proc.returncode
-            return ret, out.decode()
-        else:
+        if self.hostname is not None:
             return self.host.execute(cmd_array)
+        cmd = ' '.join(cmd_array) if shell else cmd_array
+        proc = subprocess.Popen(cmd, stderr=subprocess.STDOUT,
+                                stdout=subprocess.PIPE, shell=shell)
+        out = proc.communicate()[0]
+        return proc.returncode, out.decode()
 
     def request(self, cmd, timeout=10):
-        logger.debug(self.dbg + ": CTRL(global): " + cmd)
+        logger.debug(f"{self.dbg}: CTRL(global): {cmd}")
         return self.ctrl.request(cmd, timeout)
 
     def wait_event(self, events, timeout):
@@ -70,7 +65,7 @@ class HostapdGlobal:
         while True:
             while self.mon.pending():
                 ev = self.mon.recv()
-                logger.debug(self.dbg + "(global): " + ev)
+                logger.debug(f"{self.dbg}(global): {ev}")
                 for event in events:
                     if event in ev:
                         return ev
@@ -83,26 +78,25 @@ class HostapdGlobal:
         return None
 
     def add(self, ifname, driver=None):
-        cmd = "ADD " + ifname + " " + hapd_ctrl
+        cmd = f"ADD {ifname} {hapd_ctrl}"
         if driver:
-            cmd += " " + driver
+            cmd += f" {driver}"
         res = self.request(cmd)
         if "OK" not in res:
-            raise Exception("Could not add hostapd interface " + ifname)
+            raise Exception(f"Could not add hostapd interface {ifname}")
 
     def add_iface(self, ifname, confname):
-        res = self.request("ADD " + ifname + " config=" + confname)
+        res = self.request(f"ADD {ifname} config={confname}")
         if "OK" not in res:
             raise Exception("Could not add hostapd interface")
 
     def add_bss(self, phy, confname, ignore_error=False):
-        res = self.request("ADD bss_config=" + phy + ":" + confname)
-        if "OK" not in res:
-            if not ignore_error:
-                raise Exception("Could not add hostapd BSS")
+        res = self.request(f"ADD bss_config={phy}:{confname}")
+        if "OK" not in res and not ignore_error:
+            raise Exception("Could not add hostapd BSS")
 
     def remove(self, ifname):
-        self.request("REMOVE " + ifname, timeout=30)
+        self.request(f"REMOVE {ifname}", timeout=30)
 
     def relog(self):
         self.request("RELOG")
@@ -123,7 +117,7 @@ class HostapdGlobal:
                 found = True
                 break
         if not found:
-            raise Exception("Could not find UDP port for " + ifname)
+            raise Exception(f"Could not find UDP port for {ifname}")
         res = line.find("ctrl_iface=udp:")
         if res == -1:
             raise Exception("Wrong ctrl_interface format")
@@ -152,24 +146,19 @@ class Hostapd:
         else:
             self.ctrl = wpaspy.Ctrl(hostname, port)
             self.mon = wpaspy.Ctrl(hostname, port)
-            self.dbg = hostname + "/" + ifname
+            self.dbg = f"{hostname}/{ifname}"
         self.mon.attach()
         self.bssid = None
         self.bssidx = bssidx
 
     def cmd_execute(self, cmd_array, shell=False):
-        if self.hostname is None:
-            if shell:
-                cmd = ' '.join(cmd_array)
-            else:
-                cmd = cmd_array
-            proc = subprocess.Popen(cmd, stderr=subprocess.STDOUT,
-                                    stdout=subprocess.PIPE, shell=shell)
-            out = proc.communicate()[0]
-            ret = proc.returncode
-            return ret, out.decode()
-        else:
+        if self.hostname is not None:
             return self.host.execute(cmd_array)
+        cmd = ' '.join(cmd_array) if shell else cmd_array
+        proc = subprocess.Popen(cmd, stderr=subprocess.STDOUT,
+                                stdout=subprocess.PIPE, shell=shell)
+        out = proc.communicate()[0]
+        return proc.returncode, out.decode()
 
     def close_ctrl(self):
         if self.mon is not None:
@@ -188,18 +177,17 @@ class Hostapd:
         return self.own_addr()
 
     def request(self, cmd):
-        logger.debug(self.dbg + ": CTRL: " + cmd)
+        logger.debug(f"{self.dbg}: CTRL: {cmd}")
         return self.ctrl.request(cmd)
 
     def ping(self):
         return "PONG" in self.request("PING")
 
     def set(self, field, value):
-        if "OK" not in self.request("SET " + field + " " + value):
-            if "TKIP" in value and (field == "wpa_pairwise" or \
-                                    field == "rsn_pairwise"):
+        if "OK" not in self.request(f"SET {field} {value}"):
+            if "TKIP" in value and field in ["wpa_pairwise", "rsn_pairwise"]:
                 raise utils.HwsimSkip("Cipher TKIP not supported")
-            raise Exception("Failed to set hostapd parameter " + field)
+            raise Exception(f"Failed to set hostapd parameter {field}")
 
     def set_defaults(self):
         self.set("driver", "nl80211")
@@ -245,16 +233,16 @@ class Hostapd:
 
     def enable(self):
         if "OK" not in self.request("ENABLE"):
-            raise Exception("Failed to enable hostapd interface " + self.ifname)
+            raise Exception(f"Failed to enable hostapd interface {self.ifname}")
 
     def disable(self):
         if "OK" not in self.request("DISABLE"):
-            raise Exception("Failed to disable hostapd interface " + self.ifname)
+            raise Exception(f"Failed to disable hostapd interface {self.ifname}")
 
     def dump_monitor(self):
         while self.mon.pending():
             ev = self.mon.recv()
-            logger.debug(self.dbg + ": " + ev)
+            logger.debug(f"{self.dbg}: {ev}")
 
     def wait_event(self, events, timeout):
         if not isinstance(events, list):
@@ -263,7 +251,7 @@ class Hostapd:
         while True:
             while self.mon.pending():
                 ev = self.mon.recv()
-                logger.debug(self.dbg + ": " + ev)
+                logger.debug(f"{self.dbg}: {ev}")
                 for event in events:
                     if event in ev:
                         return ev
@@ -280,7 +268,7 @@ class Hostapd:
         if ev is None:
             raise Exception("AP did not report STA connection")
         if addr and addr not in ev:
-            raise Exception("Unexpected STA address in connection event: " + ev)
+            raise Exception(f"Unexpected STA address in connection event: {ev}")
 
     def wait_ptkinitdone(self, addr, timeout=2):
         while timeout > 0:
@@ -297,7 +285,7 @@ class Hostapd:
     def get_status(self):
         res = self.request("STATUS")
         lines = res.splitlines()
-        vals = dict()
+        vals = {}
         for l in lines:
             [name, value] = l.split('=', 1)
             vals[name] = value
@@ -305,14 +293,12 @@ class Hostapd:
 
     def get_status_field(self, field):
         vals = self.get_status()
-        if field in vals:
-            return vals[field]
-        return None
+        return vals[field] if field in vals else None
 
     def get_driver_status(self):
         res = self.request("STATUS-DRIVER")
         lines = res.splitlines()
-        vals = dict()
+        vals = {}
         for l in lines:
             [name, value] = l.split('=', 1)
             vals[name] = value
@@ -320,14 +306,12 @@ class Hostapd:
 
     def get_driver_status_field(self, field):
         vals = self.get_driver_status()
-        if field in vals:
-            return vals[field]
-        return None
+        return vals[field] if field in vals else None
 
     def get_config(self):
         res = self.request("GET_CONFIG")
         lines = res.splitlines()
-        vals = dict()
+        vals = {}
         for l in lines:
             [name, value] = l.split('=', 1)
             vals[name] = value
@@ -337,21 +321,19 @@ class Hostapd:
         ev = self.wait_event(["MGMT-RX"], timeout=timeout)
         if ev is None:
             return None
-        msg = {}
         frame = binascii.unhexlify(ev.split(' ')[1])
-        msg['frame'] = frame
-
-        hdr = struct.unpack('<HH6B6B6BH', frame[0:24])
+        msg = {'frame': frame}
+        hdr = struct.unpack('<HH6B6B6BH', frame[:24])
         msg['fc'] = hdr[0]
         msg['subtype'] = (hdr[0] >> 4) & 0xf
         hdr = hdr[1:]
         msg['duration'] = hdr[0]
         hdr = hdr[1:]
-        msg['da'] = "%02x:%02x:%02x:%02x:%02x:%02x" % hdr[0:6]
+        msg['da'] = "%02x:%02x:%02x:%02x:%02x:%02x" % hdr[:6]
         hdr = hdr[6:]
-        msg['sa'] = "%02x:%02x:%02x:%02x:%02x:%02x" % hdr[0:6]
+        msg['sa'] = "%02x:%02x:%02x:%02x:%02x:%02x" % hdr[:6]
         hdr = hdr[6:]
-        msg['bssid'] = "%02x:%02x:%02x:%02x:%02x:%02x" % hdr[0:6]
+        msg['bssid'] = "%02x:%02x:%02x:%02x:%02x:%02x" % hdr[:6]
         hdr = hdr[6:]
         msg['seq_ctrl'] = hdr[0]
         msg['payload'] = frame[24:]
@@ -374,7 +356,7 @@ class Hostapd:
         else:
             res = self.request(cmd + addr)
         lines = res.splitlines()
-        vals = dict()
+        vals = {}
         first = True
         for l in lines:
             if first and '=' not in l:
@@ -386,12 +368,9 @@ class Hostapd:
         return vals
 
     def get_mib(self, param=None):
-        if param:
-            res = self.request("MIB " + param)
-        else:
-            res = self.request("MIB")
+        res = self.request(f"MIB {param}") if param else self.request("MIB")
         lines = res.splitlines()
-        vals = dict()
+        vals = {}
         for l in lines:
             name_val = l.split('=', 1)
             if len(name_val) > 1:
@@ -404,49 +383,49 @@ class Hostapd:
         for l in lines:
             if addr not in l:
                 continue
-            vals = dict()
             [index, aa, pmkid, expiration, opportunistic] = l.split(' ')
-            vals['index'] = index
-            vals['pmkid'] = pmkid
-            vals['expiration'] = expiration
-            vals['opportunistic'] = opportunistic
-            return vals
+            return {
+                'index': index,
+                'pmkid': pmkid,
+                'expiration': expiration,
+                'opportunistic': opportunistic,
+            }
         return None
 
     def dpp_qr_code(self, uri):
-        res = self.request("DPP_QR_CODE " + uri)
+        res = self.request(f"DPP_QR_CODE {uri}")
         if "FAIL" in res:
             raise Exception("Failed to parse QR Code URI")
         return int(res)
 
     def dpp_bootstrap_gen(self, type="qrcode", chan=None, mac=None, info=None,
                           curve=None, key=None):
-        cmd = "DPP_BOOTSTRAP_GEN type=" + type
+        cmd = f"DPP_BOOTSTRAP_GEN type={type}"
         if chan:
-            cmd += " chan=" + chan
+            cmd += f" chan={chan}"
         if mac:
             if mac is True:
                 mac = self.own_addr()
             cmd += " mac=" + mac.replace(':', '')
         if info:
-            cmd += " info=" + info
+            cmd += f" info={info}"
         if curve:
-            cmd += " curve=" + curve
+            cmd += f" curve={curve}"
         if key:
-            cmd += " key=" + key
+            cmd += f" key={key}"
         res = self.request(cmd)
         if "FAIL" in res:
             raise Exception("Failed to generate bootstrapping info")
         return int(res)
 
     def dpp_listen(self, freq, netrole=None, qr=None, role=None):
-        cmd = "DPP_LISTEN " + str(freq)
+        cmd = f"DPP_LISTEN {str(freq)}"
         if netrole:
-            cmd += " netrole=" + netrole
+            cmd += f" netrole={netrole}"
         if qr:
-            cmd += " qr=" + qr
+            cmd += f" qr={qr}"
         if role:
-            cmd += " role=" + role
+            cmd += f" role={role}"
         if "OK" not in self.request(cmd):
             raise Exception("Failed to start listen operation")
 
@@ -460,19 +439,19 @@ class Hostapd:
         if own is not None:
             cmd += " own=%d" % own
         if role:
-            cmd += " role=" + role
+            cmd += f" role={role}"
         if extra:
-            cmd += " " + extra
+            cmd += f" {extra}"
         if conf:
-            cmd += " conf=" + conf
+            cmd += f" conf={conf}"
         if configurator is not None:
             cmd += " configurator=%d" % configurator
         if neg_freq:
             cmd += " neg_freq=%d" % neg_freq
         if ssid:
-            cmd += " ssid=" + binascii.hexlify(ssid.encode()).decode()
+            cmd += f" ssid={binascii.hexlify(ssid.encode()).decode()}"
         if passphrase:
-            cmd += " pass=" + binascii.hexlify(passphrase.encode()).decode()
+            cmd += f" pass={binascii.hexlify(passphrase.encode()).decode()}"
         res = self.request(cmd)
         if expect_fail:
             if "FAIL" not in res:
@@ -489,14 +468,14 @@ class Hostapd:
             id1 = use_id
         cmd = "own=%d " % id1
         if identifier:
-            cmd += "identifier=%s " % identifier
+            cmd += f"identifier={identifier} "
         cmd += "init=1 "
         if role:
-            cmd += "role=%s " % role
+            cmd += f"role={role} "
         if extra:
-            cmd += extra + " "
-        cmd += "code=%s" % code
-        res = self.request("DPP_PKEX_ADD " + cmd)
+            cmd += f"{extra} "
+        cmd += f"code={code}"
+        res = self.request(f"DPP_PKEX_ADD {cmd}")
         if "FAIL" in res:
             raise Exception("Failed to set PKEX data (initiator)")
         return id1
@@ -506,9 +485,9 @@ class Hostapd:
         id0 = self.dpp_bootstrap_gen(type="pkex", key=key, curve=curve)
         cmd = "own=%d " % id0
         if identifier:
-            cmd += "identifier=%s " % identifier
-        cmd += "code=%s" % code
-        res = self.request("DPP_PKEX_ADD " + cmd)
+            cmd += f"identifier={identifier} "
+        cmd += f"code={code}"
+        res = self.request(f"DPP_PKEX_ADD {cmd}")
         if "FAIL" in res:
             raise Exception("Failed to set PKEX data (responder)")
         self.dpp_listen(freq, role=listen_role)
@@ -516,9 +495,9 @@ class Hostapd:
     def dpp_configurator_add(self, curve=None, key=None):
         cmd = "DPP_CONFIGURATOR_ADD"
         if curve:
-            cmd += " curve=" + curve
+            cmd += f" curve={curve}"
         if key:
-            cmd += " key=" + key
+            cmd += f" key={key}"
         res = self.request(cmd)
         if "FAIL" in res:
             raise Exception("Failed to add configurator")
@@ -530,71 +509,71 @@ class Hostapd:
             raise Exception("DPP_CONFIGURATOR_REMOVE failed")
 
     def note(self, txt):
-        self.request("NOTE " + txt)
+        self.request(f"NOTE {txt}")
 
     def send_file(self, src, dst):
         self.host.send_file(src, dst)
 
 def add_ap(apdev, params, wait_enabled=True, no_enable=False, timeout=30,
            global_ctrl_override=None, driver=False):
-        if isinstance(apdev, dict):
-            ifname = apdev['ifname']
-            try:
-                hostname = apdev['hostname']
-                port = apdev['port']
-                logger.info("Starting AP " + hostname + "/" + port + " " + ifname)
-            except:
-                logger.info("Starting AP " + ifname)
-                hostname = None
-                port = 8878
-        else:
-            ifname = apdev
-            logger.info("Starting AP " + ifname + " (old add_ap argument type)")
+    if isinstance(apdev, dict):
+        ifname = apdev['ifname']
+        try:
+            hostname = apdev['hostname']
+            port = apdev['port']
+            logger.info(f"Starting AP {hostname}/{port} {ifname}")
+        except:
+            logger.info(f"Starting AP {ifname}")
             hostname = None
             port = 8878
-        hapd_global = HostapdGlobal(apdev,
-                                    global_ctrl_override=global_ctrl_override)
-        hapd_global.remove(ifname)
-        hapd_global.add(ifname, driver=driver)
-        port = hapd_global.get_ctrl_iface_port(ifname)
-        hapd = Hostapd(ifname, hostname=hostname, port=port)
-        if not hapd.ping():
-            raise Exception("Could not ping hostapd")
-        hapd.set_defaults()
-        fields = ["ssid", "wpa_passphrase", "nas_identifier", "wpa_key_mgmt",
-                  "wpa", "wpa_deny_ptk0_rekey",
-                  "wpa_pairwise", "rsn_pairwise", "auth_server_addr",
-                  "acct_server_addr", "osu_server_uri"]
-        for field in fields:
-            if field in params:
-                hapd.set(field, params[field])
-        for f, v in list(params.items()):
-            if f in fields:
-                continue
-            if isinstance(v, list):
-                for val in v:
-                    hapd.set(f, val)
-            else:
-                hapd.set(f, v)
-        if no_enable:
-            return hapd
-        hapd.enable()
-        if wait_enabled:
-            ev = hapd.wait_event(["AP-ENABLED", "AP-DISABLED"], timeout=timeout)
-            if ev is None:
-                raise Exception("AP startup timed out")
-            if "AP-ENABLED" not in ev:
-                raise Exception("AP startup failed")
+    else:
+        ifname = apdev
+        logger.info(f"Starting AP {ifname} (old add_ap argument type)")
+        hostname = None
+        port = 8878
+    hapd_global = HostapdGlobal(apdev,
+                                global_ctrl_override=global_ctrl_override)
+    hapd_global.remove(ifname)
+    hapd_global.add(ifname, driver=driver)
+    port = hapd_global.get_ctrl_iface_port(ifname)
+    hapd = Hostapd(ifname, hostname=hostname, port=port)
+    if not hapd.ping():
+        raise Exception("Could not ping hostapd")
+    hapd.set_defaults()
+    fields = ["ssid", "wpa_passphrase", "nas_identifier", "wpa_key_mgmt",
+              "wpa", "wpa_deny_ptk0_rekey",
+              "wpa_pairwise", "rsn_pairwise", "auth_server_addr",
+              "acct_server_addr", "osu_server_uri"]
+    for field in fields:
+        if field in params:
+            hapd.set(field, params[field])
+    for f, v in list(params.items()):
+        if f in fields:
+            continue
+        if isinstance(v, list):
+            for val in v:
+                hapd.set(f, val)
+        else:
+            hapd.set(f, v)
+    if no_enable:
         return hapd
+    hapd.enable()
+    if wait_enabled:
+        ev = hapd.wait_event(["AP-ENABLED", "AP-DISABLED"], timeout=timeout)
+        if ev is None:
+            raise Exception("AP startup timed out")
+        if "AP-ENABLED" not in ev:
+            raise Exception("AP startup failed")
+    return hapd
 
 def add_bss(apdev, ifname, confname, ignore_error=False):
     phy = utils.get_phy(apdev)
     try:
         hostname = apdev['hostname']
         port = apdev['port']
-        logger.info("Starting BSS " + hostname + "/" + port + " phy=" + phy + " ifname=" + ifname)
+        logger.info(f"Starting BSS {hostname}/{port} phy={phy} ifname={ifname}")
     except:
-        logger.info("Starting BSS phy=" + phy + " ifname=" + ifname)
+        logger.info(f"Starting BSS phy={phy} ifname={ifname}")
         hostname = None
         port = 8878
     hapd_global = HostapdGlobal(apdev)
@@ -612,9 +591,9 @@ def add_iface(apdev, confname):
     try:
         hostname = apdev['hostname']
         port = apdev['port']
-        logger.info("Starting interface " + hostname + "/" + port + " " + ifname)
+        logger.info(f"Starting interface {hostname}/{port} {ifname}")
     except:
-        logger.info("Starting interface " + ifname)
+        logger.info(f"Starting interface {ifname}")
         hostname = None
         port = 8878
     hapd_global = HostapdGlobal(apdev)
@@ -628,14 +607,14 @@ def add_iface(apdev, confname):
     return hapd
 
 def remove_bss(apdev, ifname=None):
-    if ifname == None:
+    if ifname is None:
         ifname = apdev['ifname']
     try:
         hostname = apdev['hostname']
         port = apdev['port']
-        logger.info("Removing BSS " + hostname + "/" + port + " " + ifname)
+        logger.info(f"Removing BSS {hostname}/{port} {ifname}")
     except:
-        logger.info("Removing BSS " + ifname)
+        logger.info(f"Removing BSS {ifname}")
     hapd_global = HostapdGlobal(apdev)
     hapd_global.remove(ifname)
 
@@ -643,7 +622,7 @@ def terminate(apdev):
     try:
         hostname = apdev['hostname']
         port = apdev['port']
-        logger.info("Terminating hostapd " + hostname + "/" + port)
+        logger.info(f"Terminating hostapd {hostname}/{port}")
     except:
         logger.info("Terminating hostapd")
     hapd_global = HostapdGlobal(apdev)
@@ -684,11 +663,12 @@ def wpa_mixed_params(ssid=None, passphrase=None):
     return params
 
 def radius_params():
-    params = {"auth_server_addr": "127.0.0.1",
-              "auth_server_port": "1812",
-              "auth_server_shared_secret": "radius",
-              "nas_identifier": "nas.w1.fi"}
-    return params
+    return {
+        "auth_server_addr": "127.0.0.1",
+        "auth_server_port": "1812",
+        "auth_server_shared_secret": "radius",
+        "nas_identifier": "nas.w1.fi",
+    }
 
 def wpa_eap_params(ssid=None):
     params = radius_params()
@@ -768,7 +748,7 @@ def send_file(apdev, src, dst):
     return hapd_global.send_file(src, dst)
 
 def acl_file(dev, apdev, conf):
-    fd, filename = tempfile.mkstemp(dir='/tmp', prefix=conf + '-')
+    fd, filename = tempfile.mkstemp(dir='/tmp', prefix=f'{conf}-')
     f = os.fdopen(fd, 'w')
 
     if conf == 'hostapd.macaddr':
@@ -802,38 +782,34 @@ def acl_file(dev, apdev, conf):
 def bssid_inc(apdev, inc=1):
     parts = apdev['bssid'].split(':')
     parts[5] = '%02x' % (int(parts[5], 16) + int(inc))
-    bssid = '%s:%s:%s:%s:%s:%s' % (parts[0], parts[1], parts[2],
-                                   parts[3], parts[4], parts[5])
-    return bssid
+    return f'{parts[0]}:{parts[1]}:{parts[2]}:{parts[3]}:{parts[4]}:{parts[5]}'
 
 def cfg_file(apdev, conf, ifname=None):
-    match = re.search(r'^bss-.+', conf)
-    if match:
+    if not (match := re.search(r'^bss-.+', conf)):
+        return conf
         # put cfg file in /tmp directory
-        fd, fname = tempfile.mkstemp(dir='/tmp', prefix=conf + '-')
-        f = os.fdopen(fd, 'w')
-        idx = ''.join(filter(str.isdigit, conf.split('-')[-1]))
-        if ifname is None:
-            ifname = apdev['ifname']
-            if idx != '1':
-                ifname = ifname + '-' + idx
+    fd, fname = tempfile.mkstemp(dir='/tmp', prefix=f'{conf}-')
+    f = os.fdopen(fd, 'w')
+    idx = ''.join(filter(str.isdigit, conf.split('-')[-1]))
+    if ifname is None:
+        ifname = apdev['ifname']
+        if idx != '1':
+            ifname = f'{ifname}-{idx}'
 
-        f.write("driver=nl80211\n")
-        f.write("ctrl_interface=/var/run/hostapd\n")
-        f.write("hw_mode=g\n")
-        f.write("channel=1\n")
-        f.write("ieee80211n=1\n")
-        if conf.startswith('bss-ht40-'):
-            f.write("ht_capab=[HT40+]\n")
-        f.write("interface=%s\n" % ifname)
+    f.write("driver=nl80211\n")
+    f.write("ctrl_interface=/var/run/hostapd\n")
+    f.write("hw_mode=g\n")
+    f.write("channel=1\n")
+    f.write("ieee80211n=1\n")
+    if conf.startswith('bss-ht40-'):
+        f.write("ht_capab=[HT40+]\n")
+    f.write("interface=%s\n" % ifname)
 
-        f.write("ssid=bss-%s\n" % idx)
-        if conf == 'bss-2-dup.conf':
-            bssid = apdev['bssid']
-        else:
-            bssid = bssid_inc(apdev, int(idx) - 1)
-        f.write("bssid=%s\n" % bssid)
+    f.write("ssid=bss-%s\n" % idx)
+    if conf == 'bss-2-dup.conf':
+        bssid = apdev['bssid']
+    else:
+        bssid = bssid_inc(apdev, int(idx) - 1)
+    f.write("bssid=%s\n" % bssid)
 
-        return fname
-
-    return conf
+    return fname

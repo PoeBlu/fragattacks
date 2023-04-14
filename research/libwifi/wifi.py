@@ -49,16 +49,14 @@ def change_log_level(delta):
 
 def croprepr(p, length=175):
 	string = repr(p)
-	if len(string) > length:
-		return string[:length - 3] + "..."
-	return string
+	return f"{string[:length - 3]}..." if len(string) > length else string
 
 #### Back-wards compatibility with older scapy
 
-if not "Dot11FCS" in locals():
+if "Dot11FCS" not in locals():
 	class Dot11FCS():
 		pass
-if not "Dot11Encrypted" in locals():
+if "Dot11Encrypted" not in locals():
 	class Dot11Encrypted():
 		pass
 	class Dot11CCMP():
@@ -69,7 +67,7 @@ if not "Dot11Encrypted" in locals():
 #### Linux ####
 
 def get_device_driver(iface):
-	path = "/sys/class/net/%s/device/driver" % iface
+	path = f"/sys/class/net/{iface}/device/driver"
 	try:
 		output = subprocess.check_output(["readlink", "-f", path])
 		return output.decode('utf-8').strip().split("/")[-1]
@@ -85,7 +83,7 @@ def get_macaddress(iface):
 		return ("%02x:" * 6)[:-1] % tuple(orb(x) for x in s)
 	except:
 		# Keep the old method as a backup though.
-		return open("/sys/class/net/%s/address" % iface).read().strip()
+		return open(f"/sys/class/net/{iface}/address").read().strip()
 
 def addr2bin(addr):
 	return binascii.a2b_hex(addr.replace(':', ''))
@@ -94,8 +92,7 @@ def get_channel(iface):
 	output = str(subprocess.check_output(["iw", iface, "info"]))
 	p = re.compile("channel (\d+)")
 	m = p.search(output)
-	if m == None: return None
-	return int(m.group(1))
+	return None if m is None else int(m.group(1))
 
 def set_channel(iface, channel):
 	if isinstance(channel, int):
@@ -157,7 +154,7 @@ class DHCP_sock(DHCP_am):
 	def prealloc_ip(self, clientmac, ip=None):
 		"""Allocate an IP for the client before it send DHCP requests"""
 		if clientmac not in self.leases:
-			if ip == None:
+			if ip is None:
 				ip = self.pool.pop()
 			self.leases[clientmac] = ip
 		return self.leases[clientmac]
@@ -166,12 +163,18 @@ class DHCP_sock(DHCP_am):
 		rep = super(DHCP_sock, self).make_reply(req)
 
 		# Fix scapy bug: set broadcast IP if required
-		if rep is not None and BOOTP in req and IP in rep:
-			if req[BOOTP].flags & 0x8000 != 0 and req[BOOTP].giaddr == '0.0.0.0' and req[BOOTP].ciaddr == '0.0.0.0':
-				rep[IP].dst = "255.255.255.255"
+		if (
+			rep is not None
+			and BOOTP in req
+			and IP in rep
+			and req[BOOTP].flags & 0x8000 != 0
+			and req[BOOTP].giaddr == '0.0.0.0'
+			and req[BOOTP].ciaddr == '0.0.0.0'
+		):
+			rep[IP].dst = "255.255.255.255"
 
 		# Explicitly set source IP if requested
-		if not self.server_ip is None:
+		if self.server_ip is not None:
 			rep[IP].src = self.server_ip
 
 		return rep
@@ -180,7 +183,11 @@ class DHCP_sock(DHCP_am):
 		self.sock.send(reply, **self.optsend)
 
 	def print_reply(self, req, reply):
-		log(STATUS, "%s: DHCP reply %s to %s" % (reply.getlayer(Ether).dst, reply.getlayer(BOOTP).yiaddr, reply.dst), color="green")
+		log(
+			STATUS,
+			f"{reply.getlayer(Ether).dst}: DHCP reply {reply.getlayer(BOOTP).yiaddr} to {reply.dst}",
+			color="green",
+		)
 
 	def remove_client(self, clientmac):
 		clientip = self.leases[clientmac]
@@ -196,13 +203,16 @@ class ARP_sock(ARP_am):
 		self.sock.send(reply, **self.optsend)
 
 	def print_reply(self, req, reply):
-		log(STATUS, "%s: ARP: %s ==> %s on %s" % (reply.getlayer(Ether).dst, req.summary(), reply.summary(), self.iff))
+		log(
+			STATUS,
+			f"{reply.getlayer(Ether).dst}: ARP: {req.summary()} ==> {reply.summary()} on {self.iff}",
+		)
 
 
 #### Packet Processing Functions ####
 
 # Compatibility with older Scapy versions
-if not "ORDER" in scapy.layers.dot11._rt_txflags:
+if "ORDER" not in scapy.layers.dot11._rt_txflags:
 	scapy.layers.dot11._rt_txflags.append("ORDER")
 
 class MonitorSocket(L2Socket):
@@ -210,7 +220,9 @@ class MonitorSocket(L2Socket):
 		super(MonitorSocket, self).__init__(iface, **kwargs)
 		self.pcap = None
 		if dumpfile:
-			self.pcap = PcapWriter("%s.%s.pcap" % (dumpfile, self.iface), append=False, sync=True)
+			self.pcap = PcapWriter(
+				f"{dumpfile}.{self.iface}.pcap", append=False, sync=True
+			)
 		self.detect_injected = detect_injected
 		self.default_rate = None
 
@@ -218,7 +230,7 @@ class MonitorSocket(L2Socket):
 		subprocess.check_output(["iw", self.iface, "set", "channel", str(channel)])
 
 	def attach_filter(self, bpf):
-		log(DEBUG, "Attaching filter to %s: <%s>" % (self.iface, bpf))
+		log(DEBUG, f"Attaching filter to {self.iface}: <{bpf}>")
 		attach_filter(self.ins, bpf, self.iface)
 
 	def set_default_rate(self, rate):
@@ -252,7 +264,7 @@ class MonitorSocket(L2Socket):
 
 	def _detect_and_strip_fcs(self, p):
 		# Older scapy can't handle the optional Frame Check Sequence (FCS) field automatically
-		if p[RadioTap].present & 2 != 0 and not Dot11FCS in p:
+		if p[RadioTap].present & 2 != 0 and Dot11FCS not in p:
 			rawframe = raw(p[RadioTap])
 			pos = 8
 			while orb(rawframe[pos - 1]) & 0x80 != 0: pos += 4
@@ -270,7 +282,7 @@ class MonitorSocket(L2Socket):
 
 	def recv(self, x=MTU, reflected=False):
 		p = L2Socket.recv(self, x)
-		if p == None or not (Dot11 in p or Dot11FCS in p):
+		if p is None or Dot11 not in p and Dot11FCS not in p:
 			return None
 		if self.pcap:
 			self.pcap.write(p)
@@ -284,10 +296,7 @@ class MonitorSocket(L2Socket):
 			return None
 
 		# Strip the FCS if present, and drop the RadioTap header
-		if Dot11FCS in p:
-			return self._strip_fcs(p)
-		else:
-			return self._detect_and_strip_fcs(p)
+		return self._strip_fcs(p) if Dot11FCS in p else self._detect_and_strip_fcs(p)
 
 	def close(self):
 		if self.pcap: self.pcap.close()
@@ -354,8 +363,7 @@ def dot11_get_iv(p):
 	return None
 
 def dot11_get_priority(p):
-	if not Dot11QoS in p: return 0
-	return p[Dot11QoS].TID
+	return 0 if Dot11QoS not in p else p[Dot11QoS].TID
 
 
 #### Crypto functions and util ####
@@ -389,10 +397,10 @@ class IvInfo():
 
 class IvCollection():
 	def __init__(self):
-		self.ivs = dict() # maps IV values to IvInfo objects
+		self.ivs = {}
 
 	def reset(self):
-		self.ivs = dict()
+		self.ivs = {}
 
 	def track_used_iv(self, p):
 		iv = dot11_get_iv(p)
@@ -406,8 +414,7 @@ class IvCollection():
 	def is_new_iv(self, p):
 		"""Returns True if the IV in this frame is higher than all previously observed ones"""
 		iv = dot11_get_iv(p)
-		if len(self.ivs) == 0: return True
-		return iv > max(self.ivs.keys())
+		return True if len(self.ivs) == 0 else iv > max(self.ivs.keys())
 
 def create_fragments(header, data, num_frags):
 	# This special case is useful so scapy keeps the full "interpretation" of the frame
@@ -430,27 +437,25 @@ def create_fragments(header, data, num_frags):
 	return fragments
 
 def get_element(el, id):
-	if not Dot11Elt in el: return None
+	if Dot11Elt not in el: return None
 	el = el[Dot11Elt]
-	while not el is None:
+	while el is not None:
 		if el.ID == id:
 			return el
 		el = el.payload
 	return None
 
 def get_ssid(beacon):
-	if not (Dot11 in beacon or Dot11FCS in beacon): return
+	if Dot11 not in beacon and Dot11FCS not in beacon: return
 	if Dot11Elt not in beacon: return
 	if beacon[Dot11].type != 0 and beacon[Dot11].subtype != 8: return
 	el = get_element(beacon, IEEE_TLV_TYPE_SSID)
 	return el.info.decode()
 
 def is_from_sta(p, macaddr):
-	if not (Dot11 in p or Dot11FCS in p):
+	if Dot11 not in p and Dot11FCS not in p:
 		return False
-	if p.addr1 != macaddr and p.addr2 != macaddr:
-		return False
-	return True
+	return p.addr1 == macaddr or p.addr2 == macaddr
 
 def get_bss(iface, clientmac, timeout=20):
 	ps = sniff(count=1, timeout=timeout, lfilter=lambda p: is_from_sta(p, clientmac) and p.addr2 != None, iface=iface)

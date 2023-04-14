@@ -25,7 +25,4 @@ lockdep = r'(\[\s*)?(INFO|WARNING): (%s)|\*\*\* DEADLOCK \*\*\*' % ('|'.join(loc
 issue = re.compile('(\[[0-9 .]*\] )?(WARNING:|BUG:|%s|RTNL: assertion failed).*' % lockdep)
 
 def check_kernel(logfile):
-    for line in open(logfile, 'r'):
-        if issue.match(line):
-            return False
-    return True
+    return not any(issue.match(line) for line in open(logfile, 'r'))

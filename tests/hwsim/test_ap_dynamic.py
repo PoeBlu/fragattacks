@@ -40,46 +40,58 @@ def test_ap_change_ssid(dev, apdev):
 def multi_check(apdev, dev, check, scan_opt=True):
     id = []
     num_bss = len(check)
-    for i in range(0, num_bss):
+    for i in range(num_bss):
         dev[i].request("BSS_FLUSH 0")
         dev[i].dump_monitor()
-    for i in range(0, num_bss):
-        if check[i]:
-            continue
-        id.append(dev[i].connect("bss-" + str(i + 1), key_mgmt="NONE",
-                                 scan_freq="2412", wait_connect=False))
+    id.extend(
+        dev[i].connect(
+            f"bss-{str(i + 1)}",
+            key_mgmt="NONE",
+            scan_freq="2412",
+            wait_connect=False,
+        )
+        for i in range(num_bss)
+        if not check[i]
+    )
     for i in range(num_bss):
         if not check[i]:
             continue
         bssid = hostapd.bssid_inc(apdev, i)
         if scan_opt:
             dev[i].scan_for_bss(bssid, freq=2412)
-        id.append(dev[i].connect("bss-" + str(i + 1), key_mgmt="NONE",
-                                 scan_freq="2412", wait_connect=True))
+        id.append(
+            dev[i].connect(
+                f"bss-{str(i + 1)}",
+                key_mgmt="NONE",
+                scan_freq="2412",
+                wait_connect=True,
+            )
+        )
     first = True
     for i in range(num_bss):
         if not check[i]:
             timeout = 0.2 if first else 0.01
             first = False
-            ev = dev[i].wait_event(["CTRL-EVENT-CONNECTED"], timeout=timeout)
-            if ev:
+            if ev := dev[i].wait_event(
+                ["CTRL-EVENT-CONNECTED"], timeout=timeout
+            ):
                 raise Exception("Unexpected connection")
 
-    for i in range(0, num_bss):
+    for i in range(num_bss):
         dev[i].remove_network(id[i])
     for i in range(num_bss):
         if check[i]:
             dev[i].wait_disconnected(timeout=5)
 
     res = ''
-    for i in range(0, num_bss):
+    for i in range(num_bss):
         res = res + dev[i].request("BSS RANGE=ALL MASK=0x2")
 
-    for i in range(0, num_bss):
+    for i in range(num_bss):
         if not check[i]:
-            bssid = '02:00:00:00:03:0' + str(i)
+            bssid = f'02:00:00:00:03:0{str(i)}'
             if bssid in res:
-                raise Exception("Unexpected BSS" + str(i) + " in scan results")
+                raise Exception(f"Unexpected BSS{str(i)} in scan results")
 
 def test_ap_bss_add_remove(dev, apdev):
     """Dynamic BSS add/remove operations with hostapd"""
@@ -246,7 +258,7 @@ def test_ap_remove_during_acs2(dev, apdev):
     """Remove BSS during ACS in multi-BSS configuration"""
     force_prev_ap_on_24g(apdev[0])
     ifname = apdev[0]['ifname']
-    ifname2 = ifname + "-2"
+    ifname2 = f"{ifname}-2"
     hapd = hostapd.add_ap(apdev[0], {}, no_enable=True)
     hapd.set("ssid", "test-acs-remove")
     hapd.set("channel", "0")
@@ -259,7 +271,7 @@ def test_ap_remove_during_acs3(dev, apdev):
     """Remove second BSS during ACS in multi-BSS configuration"""
     force_prev_ap_on_24g(apdev[0])
     ifname = apdev[0]['ifname']
-    ifname2 = ifname + "-2"
+    ifname2 = f"{ifname}-2"
     hapd = hostapd.add_ap(apdev[0], {}, no_enable=True)
     hapd.set("ssid", "test-acs-remove")
     hapd.set("channel", "0")
@@ -281,7 +293,7 @@ def test_ap_remove_during_ht_coex_scan(dev, apdev):
 def test_ap_remove_during_ht_coex_scan2(dev, apdev):
     """Remove BSS during HT co-ex scan in multi-BSS configuration"""
     ifname = apdev[0]['ifname']
-    ifname2 = ifname + "-2"
+    ifname2 = f"{ifname}-2"
     hapd = hostapd.add_ap(apdev[0], {}, no_enable=True)
     hapd.set("ssid", "test-ht-remove")
     hapd.set("channel", "1")
@@ -294,7 +306,7 @@ def test_ap_remove_during_ht_coex_scan2(dev, apdev):
 def test_ap_remove_during_ht_coex_scan3(dev, apdev):
     """Remove second BSS during HT co-ex scan in multi-BSS configuration"""
     ifname = apdev[0]['ifname']
-    ifname2 = ifname + "-2"
+    ifname2 = f"{ifname}-2"
     hapd = hostapd.add_ap(apdev[0], {}, no_enable=True)
     hapd.set("ssid", "test-ht-remove")
     hapd.set("channel", "1")
@@ -348,7 +360,7 @@ def test_ap_bss_add_many(dev, apdev):
         hapd = hostapd.HostapdGlobal(apdev[0])
         hapd.flush()
         for i in range(16):
-            ifname2 = ifname + '-' + str(i)
+            ifname2 = f'{ifname}-{str(i)}'
             hapd.remove(ifname2)
         try:
             os.remove('/tmp/hwsim-bss.conf')
@@ -360,7 +372,7 @@ def _test_ap_bss_add_many(dev, apdev):
     hostapd.add_bss(apdev[0], ifname, 'bss-1.conf')
     fname = '/tmp/hwsim-bss.conf'
     for i in range(16):
-        ifname2 = ifname + '-' + str(i)
+        ifname2 = f'{ifname}-{str(i)}'
         with open(fname, 'w') as f:
             f.write("driver=nl80211\n")
             f.write("hw_mode=g\n")
@@ -381,7 +393,7 @@ def _test_ap_bss_add_many(dev, apdev):
         dev[0].connect("test-%d" % i, key_mgmt="NONE", scan_freq="2412")
         dev[0].request("DISCONNECT")
         dev[0].wait_disconnected(timeout=5)
-        ifname2 = ifname + '-' + str(i)
+        ifname2 = f'{ifname}-{str(i)}'
         hostapd.remove_bss(apdev[0], ifname2)
 
 def test_ap_bss_add_reuse_existing(dev, apdev):
@@ -398,7 +410,7 @@ def test_ap_bss_add_reuse_existing(dev, apdev):
 def hapd_bss_out_of_mem(hapd, phy, confname, count, func):
     with alloc_fail(hapd, count, func):
         hapd_global = hostapd.HostapdGlobal()
-        res = hapd_global.ctrl.request("ADD bss_config=" + phy + ":" + confname)
+        res = hapd_global.ctrl.request(f"ADD bss_config={phy}:{confname}")
         if "OK" in res:
             raise Exception("add_bss succeeded")
 
@@ -483,9 +495,7 @@ def test_ap_duplicate_bssid(dev, apdev):
         hostapd.add_bss(apdev[0], ifname2, 'bss-2-dup.conf')
         raise Exception("BSS add succeeded unexpectedly")
     except Exception as e:
-        if "Could not add hostapd BSS" in str(e):
-            pass
-        else:
+        if "Could not add hostapd BSS" not in str(e):
             raise
 
     hostapd.add_bss(apdev[0], ifname3, 'bss-3.conf')
@@ -512,14 +522,28 @@ def test_ap_bss_config_file(dev, apdev, params):
     confname2 = hostapd.cfg_file(apdev[0], "bss-2.conf")
     confname3 = hostapd.cfg_file(apdev[0], "bss-3.conf")
 
-    cmd = [prg, '-B', '-dddt', '-P', pidfile, '-f', logfile, '-S', '-T',
-           '-b', phy + ':' + confname1, '-b', phy + ':' + confname2,
-           '-b', phy + ':' + confname3]
+    cmd = [
+        prg,
+        '-B',
+        '-dddt',
+        '-P',
+        pidfile,
+        '-f',
+        logfile,
+        '-S',
+        '-T',
+        '-b',
+        f'{phy}:{confname1}',
+        '-b',
+        f'{phy}:{confname2}',
+        '-b',
+        f'{phy}:{confname3}',
+    ]
     res = subprocess.check_call(cmd)
     if res != 0:
-        raise Exception("Could not start hostapd: %s" % str(res))
+        raise Exception(f"Could not start hostapd: {str(res)}")
     multi_check(apdev[0], dev, [True, True, True])
-    for i in range(0, 3):
+    for i in range(3):
         dev[i].request("DISCONNECT")
 
     hapd = hostapd.Hostapd(apdev[0]['ifname'])
@@ -529,7 +553,7 @@ def test_ap_bss_config_file(dev, apdev, params):
     ev = hapd.wait_event(["CTRL-EVENT-TERMINATING"], timeout=15)
     if ev is None:
         raise Exception("CTRL-EVENT-TERMINATING not seen")
-    for i in range(30):
+    for _ in range(30):
         time.sleep(0.1)
         if not os.path.exists(pidfile):
             break

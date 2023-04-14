@@ -46,14 +46,13 @@ def wpas_connect():
             print("Could not find hostapd: ", error)
             return None
 
-    if len(ifaces) < 1:
+    if not ifaces:
         print("No hostapd control interface found")
         return None
 
     for ctrl in ifaces:
         try:
-            wpas = wpaspy.Ctrl(ctrl)
-            return wpas
+            return wpaspy.Ctrl(ctrl)
         except Exception as e:
             pass
     return None
@@ -61,46 +60,40 @@ def wpas_connect():
 
 def wpas_tag_read(message):
     wpas = wpas_connect()
-    if (wpas == None):
+    if wpas is None:
         return False
-    if "FAIL" in wpas.request("WPS_NFC_TAG_READ " + str(message).encode("hex")):
-        return False
-    return True
+    return "FAIL" not in wpas.request(
+        "WPS_NFC_TAG_READ " + str(message).encode("hex")
+    )
 
 
 def wpas_get_config_token():
     wpas = wpas_connect()
-    if (wpas == None):
+    if wpas is None:
         return None
     ret = wpas.request("WPS_NFC_CONFIG_TOKEN NDEF")
-    if "FAIL" in ret:
-        return None
-    return ret.rstrip().decode("hex")
+    return None if "FAIL" in ret else ret.rstrip().decode("hex")
 
 
 def wpas_get_password_token():
     wpas = wpas_connect()
-    if (wpas == None):
+    if wpas is None:
         return None
     ret = wpas.request("WPS_NFC_TOKEN NDEF")
-    if "FAIL" in ret:
-        return None
-    return ret.rstrip().decode("hex")
+    return None if "FAIL" in ret else ret.rstrip().decode("hex")
 
 
 def wpas_get_handover_sel():
     wpas = wpas_connect()
-    if (wpas == None):
+    if wpas is None:
         return None
     ret = wpas.request("NFC_GET_HANDOVER_SEL NDEF WPS-CR")
-    if "FAIL" in ret:
-        return None
-    return ret.rstrip().decode("hex")
+    return None if "FAIL" in ret else ret.rstrip().decode("hex")
 
 
 def wpas_report_handover(req, sel):
     wpas = wpas_connect()
-    if (wpas == None):
+    if wpas is None:
         return None
     return wpas.request("NFC_REPORT_HANDOVER RESP WPS " +
                         str(req).encode("hex") + " " +
@@ -116,24 +109,24 @@ class HandoverServer(nfc.handover.HandoverServer):
     # override to avoid parser error in request/response.pretty() in nfcpy
     # due to new WSC handover format
     def _process_request(self, request):
-        summary("received handover request {}".format(request.type))
+        summary(f"received handover request {request.type}")
         response = nfc.ndef.Message("\xd1\x02\x01Hs\x12")
-        if not request.type == 'urn:nfc:wkt:Hr':
+        if request.type != 'urn:nfc:wkt:Hr':
             summary("not a handover request")
         else:
             try:
                 request = nfc.ndef.HandoverRequestMessage(request)
             except nfc.ndef.DecodeError as e:
-                summary("error decoding 'Hr' message: {}".format(e))
+                summary(f"error decoding 'Hr' message: {e}")
             else:
                 response = self.process_request(request)
-        summary("send handover response {}".format(response.type))
+        summary(f"send handover response {response.type}")
         return response
 
     def process_request(self, request):
         summary("HandoverServer - request received")
         try:
-            print("Parsed handover request: " + request.pretty())
+            print(f"Parsed handover request: {request.pretty()}")
         except Exception as e:
             print(e)
         print(str(request).encode("hex"))
@@ -141,7 +134,7 @@ class HandoverServer(nfc.handover.HandoverServer):
         sel = nfc.ndef.HandoverSelectMessage(version="1.2")
 
         for carrier in request.carriers:
-            print("Remote carrier type: " + carrier.type)
+            print(f"Remote carrier type: {carrier.type}")
             if carrier.type == "application/vnd.wfa.wsc":
                 summary("WPS carrier type match - add WPS carrier record")
                 data = wpas_get_handover_sel()
@@ -174,7 +167,7 @@ def wps_tag_read(tag):
     success = False
     if len(tag.ndef.message):
         for record in tag.ndef.message:
-            print("record type " + record.type)
+            print(f"record type {record.type}")
             if record.type == "application/vnd.wfa.wsc":
                 summary("WPS tag - send to hostapd")
                 success = wpas_tag_read(tag.ndef.message)
@@ -189,7 +182,7 @@ def wps_tag_read(tag):
 
 
 def rdwr_connected_write(tag):
-    summary("Tag found - writing - " + str(tag))
+    summary(f"Tag found - writing - {str(tag)}")
     global write_data
     tag.ndef.message = str(write_data)
     success_report("Tag write succeeded")
@@ -207,7 +200,7 @@ def wps_write_config_tag(clf, wait_remove=True):
     global write_data, write_wait_remove
     write_wait_remove = wait_remove
     write_data = wpas_get_config_token()
-    if write_data == None:
+    if write_data is None:
         summary("Could not get WPS config token from hostapd")
         return
 
@@ -220,7 +213,7 @@ def wps_write_password_tag(clf, wait_remove=True):
     global write_data, write_wait_remove
     write_wait_remove = wait_remove
     write_data = wpas_get_password_token()
-    if write_data == None:
+    if write_data is None:
         summary("Could not get WPS password token from hostapd")
         return
 
@@ -230,10 +223,10 @@ def wps_write_password_tag(clf, wait_remove=True):
 
 def rdwr_connected(tag):
     global only_one, no_wait
-    summary("Tag connected: " + str(tag))
+    summary(f"Tag connected: {str(tag)}")
 
     if tag.ndef:
-        print("NDEF tag: " + tag.type)
+        print(f"NDEF tag: {tag.type}")
         try:
             print(tag.ndef.message.pretty())
         except Exception as e:
@@ -316,9 +309,9 @@ def main():
             raise SystemExit
 
         global continue_loop
+        wait_connection = True
         while continue_loop:
             print("Waiting for a tag or peer to be touched")
-            wait_connection = True
             try:
                 if not clf.connect(rdwr={'on-connect': rdwr_connected},
                                    llcp={'on-startup': llcp_startup,

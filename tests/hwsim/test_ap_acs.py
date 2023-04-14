@@ -33,18 +33,18 @@ def wait_acs(hapd, return_after_acs=False):
     if not ev:
         raise Exception("ACS start timed out")
     if "ACS-STARTED" not in ev:
-        raise Exception("Unexpected ACS event: " + ev)
+        raise Exception(f"Unexpected ACS event: {ev}")
 
     state = hapd.get_status_field("state")
     if state != "ACS":
-        raise Exception("Unexpected interface state %s (expected ACS)" % state)
+        raise Exception(f"Unexpected interface state {state} (expected ACS)")
 
     ev = hapd.wait_event(["ACS-COMPLETED", "ACS-FAILED", "AP-ENABLED",
                           "AP-DISABLED"], timeout=20)
     if not ev:
         raise Exception("ACS timed out")
     if "ACS-COMPLETED" not in ev:
-        raise Exception("Unexpected ACS event: " + ev)
+        raise Exception(f"Unexpected ACS event: {ev}")
 
     if return_after_acs:
         return
@@ -53,11 +53,11 @@ def wait_acs(hapd, return_after_acs=False):
     if not ev:
         raise Exception("AP setup timed out")
     if "AP-ENABLED" not in ev:
-        raise Exception("Unexpected ACS event: " + ev)
+        raise Exception(f"Unexpected ACS event: {ev}")
 
     state = hapd.get_status_field("state")
     if state != "ENABLED":
-        raise Exception("Unexpected interface state %s (expected ENABLED)" % state)
+        raise Exception(f"Unexpected interface state {state} (expected ENABLED)")
 
 def test_ap_acs(dev, apdev):
     """Automatic channel selection"""
@@ -462,8 +462,22 @@ def test_ap_acs_exclude_dfs(dev, apdev, params):
             raise Exception("Unexpected interface state")
 
         freq = int(hapd.get_status_field("freq"))
-        if freq in [5260, 5280, 5300, 5320,
-                    5500, 5520, 5540, 5560, 5580, 5600, 5620, 5640, 5660, 5680]:
+        if freq in {
+            5260,
+            5280,
+            5300,
+            5320,
+            5500,
+            5520,
+            5540,
+            5560,
+            5580,
+            5600,
+            5620,
+            5640,
+            5660,
+            5680,
+        }:
             raise Exception("Unexpected frequency: %d" % freq)
 
         dev[0].connect("test-acs", psk="12345678", scan_freq=str(freq))
@@ -577,7 +591,7 @@ def test_ap_acs_with_fallback_to_20(dev, apdev):
 
     dev[0].connect("test-acs", psk="12345678", scan_freq=freq)
     sig = dev[0].request("SIGNAL_POLL").splitlines()
-    logger.info("SIGNAL_POLL: " + str(sig))
+    logger.info(f"SIGNAL_POLL: {str(sig)}")
     if "WIDTH=20 MHz" not in sig:
         raise Exception("Station did not report 20 MHz bandwidth")
 
@@ -595,18 +609,24 @@ def test_ap_acs_rx_during(dev, apdev):
     addr = "020304050607"
     broadcast = 6*"ff"
 
-    probereq = "40000000" + broadcast + addr + broadcast + "1000"
+    probereq = f"40000000{broadcast}{addr}{broadcast}1000"
     probereq += "0000" + "010802040b160c121824" + "32043048606c" + "030100"
-    if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % probereq):
+    if "OK" not in hapd.request(
+        f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={probereq}"
+    ):
         raise Exception("MGMT_RX_PROCESS failed")
 
-    probereq = "40000000" + broadcast + addr + broadcast + "1000"
+    probereq = f"40000000{broadcast}{addr}{broadcast}1000"
     probereq += "0000" + "010102"
-    if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2437 datarate=0 ssi_signal=-30 frame=%s" % probereq):
+    if "OK" not in hapd.request(
+        f"MGMT_RX_PROCESS freq=2437 datarate=0 ssi_signal=-30 frame={probereq}"
+    ):
         raise Exception("MGMT_RX_PROCESS failed")
 
-    auth = "b0003a01" + bssid + addr + bssid + '1000000001000000'
-    if "OK" not in hapd.request("MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame=%s" % auth):
+    auth = f"b0003a01{bssid}{addr}{bssid}1000000001000000"
+    if "OK" not in hapd.request(
+        f"MGMT_RX_PROCESS freq=2412 datarate=0 ssi_signal=-30 frame={auth}"
+    ):
         raise Exception("MGMT_RX_PROCESS failed")
     hapd.set("ext_mgmt_frame_handling", "0")
 

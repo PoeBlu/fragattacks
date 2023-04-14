@@ -18,7 +18,8 @@ def char2trigger(c):
 	elif c == 'B': return Action.BeforeAuth
 	elif c == 'A': return Action.AfterAuth
 	elif c == 'C': return Action.Connected
-	else: raise Exception("Unknown trigger character " + c)
+	else:else
+		raise Exception(f"Unknown trigger character {c}")
 
 def stract2action(stract):
 	"""Parse a single trigger and action pair"""
@@ -48,10 +49,11 @@ def stract2action(stract):
 
 def str2actions(stractions, default):
 	"""Parse a list of trigger and action pairs"""
-	if stractions != None:
-		return [stract2action(stract) for stract in stractions.split(",")]
-	else:
+	if stractions is None:
 		return default
+
+	else:
+		return [stract2action(stract) for stract in stractions.split(",")]
 
 def prepare_tests(opt):
 	# --------------- Main Tests ---------------
@@ -68,7 +70,7 @@ def prepare_tests(opt):
 		# QoS TID. The second fragment must use an incremental PN compared to the first fragment.
 		# So this also tests if the receivers uses a per-QoS receive replay counter. By overriding
 		# the TID you can check whether fragments are cached for multiple sequence numbers in one TID.
-		tid = 1 if stractions == None else int(stractions)
+		tid = 1 if stractions is None else int(stractions)
 		separator = Dot11(type="Data", subtype=8, SC=(33 << 4) | 0)/Dot11QoS(TID=tid)/LLC()/SNAP()
 		test = PingTest(REQ_ICMP,
 				[Action(Action.Connected, action=Action.GetIp),
@@ -88,7 +90,7 @@ def prepare_tests(opt):
 		test = EapolAmsduTest(REQ_ICMP, actions, freebsd, opt)
 
 	elif opt.testname == "linux-plain":
-		decoy_tid = None if stractions == None else int(stractions)
+		decoy_tid = None if stractions is None else int(stractions)
 		test = LinuxTest(REQ_ICMP, decoy_tid)
 
 	elif opt.testname in ["amsdu-inject", "amsdu-inject-bad"]:
@@ -110,8 +112,6 @@ def prepare_tests(opt):
 				 Action(Action.AfterAuth, enc=True),
 				])
 
-	# --------------- Research Tests ---------------
-
 	elif opt.testname == "forward":
 		test = ForwardTest(eapol=False, dst=stractions)
 
@@ -124,7 +124,6 @@ def prepare_tests(opt):
 	elif opt.testname == "qca-rekey":
 		test = QcaDriverRekey()
 
-	# No valid test ID/name was given
 	else: return None
 
 	# If requested, override delay and inc_pn parameters in the test.
@@ -149,9 +148,7 @@ def args2ptype(args):
 	if args.dhcp: return REQ_DHCP
 	if args.icmp: return REQ_ICMP
 	if args.ipv6: return REQ_ICMPv6_RA
-	if args.udp: return REQ_UDP
-
-	return None
+	return REQ_UDP if args.udp else None
 
 def args2msdu(args):
 	# Only one of these should be given
@@ -160,15 +157,17 @@ def args2msdu(args):
 		quit(1)
 
 	if args.amsdu: return 1
-	if args.amsdu_fake: return 2
-
-	return None
+	return 2 if args.amsdu_fake else None
 
 def get_expected_scapy_ver():
-	for line in open("requirements.txt"):
-		if line.startswith("scapy=="):
-			return line[7:].strip()
-	return None
+	return next(
+		(
+			line[7:].strip()
+			for line in open("requirements.txt")
+			if line.startswith("scapy==")
+		),
+		None,
+	)
 
 if __name__ == "__main__":
 	log(STATUS, f"This is FragAttack version {FRAGVERSION}.")
@@ -247,7 +246,7 @@ if __name__ == "__main__":
 
 	# Construct the test
 	options.test = prepare_tests(options)
-	if options.test == None:
+	if options.test is None:
 		log(STATUS, f"Test name '{options.testname}' not recognized. Specify a valid test case.")
 		quit(1)
 
@@ -255,10 +254,7 @@ if __name__ == "__main__":
 	change_log_level(-options.debug)
 
 	# Now start the tests --- TODO: Inject Deauths before connecting with client...
-	if options.ap:
-		daemon = Authenticator(options)
-	else:
-		daemon = Supplicant(options)
+	daemon = Authenticator(options) if options.ap else Supplicant(options)
 	atexit.register(cleanup)
 	daemon.run()
 

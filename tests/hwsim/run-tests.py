@@ -48,8 +48,8 @@ def reset_devs(dev, apdev):
         try:
             d.reset()
         except Exception as e:
-            logger.info("Failed to reset device " + d.ifname)
-            print(str(e))
+            logger.info(f"Failed to reset device {d.ifname}")
+            print(e)
             ok = False
 
     wpas = None
@@ -78,7 +78,7 @@ def reset_devs(dev, apdev):
         hapd.remove('as-erp')
     except Exception as e:
         logger.info("Failed to remove hostapd interface")
-        print(str(e))
+        print(e)
         ok = False
     return ok
 
@@ -96,33 +96,33 @@ def add_log_file(conn, test, run, type, path):
         conn.execute(sql, params)
         conn.commit()
     except Exception as e:
-        print("sqlite: " + str(e))
+        print(f"sqlite: {str(e)}")
         print("sql: %r" % (params, ))
 
 def report(conn, prefill, build, commit, run, test, result, duration, logdir,
            sql_commit=True):
-    if conn:
-        if not build:
-            build = ''
-        if not commit:
-            commit = ''
-        if prefill:
-            conn.execute('DELETE FROM results WHERE test=? AND run=? AND result=?', (test, run, 'NOTRUN'))
-        sql = "INSERT INTO results(test,result,run,time,duration,build,commitid) VALUES(?, ?, ?, ?, ?, ?, ?)"
-        params = (test, result, run, time.time(), duration, build, commit)
-        try:
-            conn.execute(sql, params)
-            if sql_commit:
-                conn.commit()
-        except Exception as e:
-            print("sqlite: " + str(e))
-            print("sql: %r" % (params, ))
+    if not conn:
+        return
+    if not build:
+        build = ''
+    if not commit:
+        commit = ''
+    if prefill:
+        conn.execute('DELETE FROM results WHERE test=? AND run=? AND result=?', (test, run, 'NOTRUN'))
+    sql = "INSERT INTO results(test,result,run,time,duration,build,commitid) VALUES(?, ?, ?, ?, ?, ?, ?)"
+    params = (test, result, run, time.time(), duration, build, commit)
+    try:
+        conn.execute(sql, params)
+        if sql_commit:
+            conn.commit()
+    except Exception as e:
+        print(f"sqlite: {str(e)}")
+        print("sql: %r" % (params, ))
 
-        if result == "FAIL":
-            for log in ["log", "log0", "log1", "log2", "log3", "log5",
+    if result == "FAIL":
+        for log in ["log", "log0", "log1", "log2", "log3", "log5",
                         "hostapd", "dmesg", "hwsim0", "hwsim0.pcapng"]:
-                add_log_file(conn, test, run, log,
-                             logdir + "/" + test + "." + log)
+            add_log_file(conn, test, run, log, f"{logdir}/{test}.{log}")
 
 class DataCollector(object):
     def __init__(self, logdir, testname, args):
@@ -133,7 +133,7 @@ class DataCollector(object):
         self._dbus = args.dbus
     def __enter__(self):
         if self._tracing:
-            output = os.path.abspath(os.path.join(self._logdir, '%s.dat' % (self._testname, )))
+            output = os.path.abspath(os.path.join(self._logdir, f'{self._testname}.dat'))
             self._trace_cmd = subprocess.Popen(['trace-cmd', 'record', '-o', output, '-e', 'mac80211', '-e', 'cfg80211', '-e', 'printk', 'sh', '-c', 'echo STARTED ; read l'],
                                                stdin=subprocess.PIPE,
                                                stdout=subprocess.PIPE,
@@ -142,18 +142,16 @@ class DataCollector(object):
             l = self._trace_cmd.stdout.read(7)
             while self._trace_cmd.poll() is None and b'STARTED' not in l:
                 l += self._trace_cmd.stdout.read(1)
-            res = self._trace_cmd.returncode
-            if res:
+            if res := self._trace_cmd.returncode:
                 print("Failed calling trace-cmd: returned exit status %d" % res)
                 sys.exit(1)
         if self._dbus:
-            output = os.path.abspath(os.path.join(self._logdir, '%s.dbus' % (self._testname, )))
+            output = os.path.abspath(os.path.join(self._logdir, f'{self._testname}.dbus'))
             self._dbus_cmd = subprocess.Popen(['dbus-monitor', '--system'],
                                               stdout=open(output, 'w'),
                                               stderr=open('/dev/null', 'w'),
                                               cwd=self._logdir)
-            res = self._dbus_cmd.returncode
-            if res:
+            if res := self._dbus_cmd.returncode:
                 print("Failed calling dbus-monitor: returned exit status %d" % res)
                 sys.exit(1)
     def __exit__(self, type, value, traceback):
@@ -162,7 +160,7 @@ class DataCollector(object):
             self._trace_cmd.stdin.flush()
             self._trace_cmd.wait()
         if self._dmesg:
-            output = os.path.join(self._logdir, '%s.dmesg' % (self._testname, ))
+            output = os.path.join(self._logdir, f'{self._testname}.dmesg')
             num = 0
             while os.path.exists(output):
                 output = os.path.join(self._logdir, '%s.dmesg-%d' % (self._testname, num))
@@ -173,11 +171,10 @@ def rename_log(logdir, basename, testname, dev):
     try:
         import getpass
         srcname = os.path.join(logdir, basename)
-        dstname = os.path.join(logdir, testname + '.' + basename)
+        dstname = os.path.join(logdir, f'{testname}.{basename}')
         num = 0
         while os.path.exists(dstname):
-            dstname = os.path.join(logdir,
-                                   testname + '.' + basename + '-' + str(num))
+            dstname = os.path.join(logdir, f'{testname}.{basename}-{str(num)}')
             num = num + 1
         os.rename(srcname, dstname)
         if dev:
@@ -191,10 +188,7 @@ def is_long_duration_test(t):
     return hasattr(t, "long_duration_test") and t.long_duration_test
 
 def get_test_description(t):
-    if t.__doc__ is None:
-        desc = "MISSING DESCRIPTION"
-    else:
-        desc = t.__doc__
+    desc = "MISSING DESCRIPTION" if t.__doc__ is None else t.__doc__
     if is_long_duration_test(t):
         desc += " [long]"
     return desc

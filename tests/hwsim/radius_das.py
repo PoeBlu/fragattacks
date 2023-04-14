@@ -25,8 +25,9 @@ class DisconnectPacket(pyrad.packet.Packet):
             self.id = random.randrange(0, 256)
 
         header = struct.pack('!BBH', self.code, self.id, (20 + len(attr)))
-        self.authenticator = hashlib.md5(header[0:4] + 16 * b'\x00' + attr
-            + self.secret).digest()
+        self.authenticator = hashlib.md5(
+            (header[:4] + 16 * b'\x00' + attr + self.secret)
+        ).digest()
         return header + self.authenticator + attr
 
 class CoAPacket(pyrad.packet.Packet):
@@ -42,6 +43,7 @@ class CoAPacket(pyrad.packet.Packet):
             self.id = random.randrange(0, 256)
 
         header = struct.pack('!BBH', self.code, self.id, (20 + len(attr)))
-        self.authenticator = hashlib.md5(header[0:4] + 16 * b'\x00' + attr
-            + self.secret).digest()
+        self.authenticator = hashlib.md5(
+            (header[:4] + 16 * b'\x00' + attr + self.secret)
+        ).digest()
         return header + self.authenticator + attr

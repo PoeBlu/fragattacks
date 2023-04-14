@@ -44,7 +44,7 @@ def test_ap_blacklist_all(dev, apdev, params):
     if not dev[0].wait_event(["CTRL-EVENT-AUTH-REJECT"], timeout=10):
         raise Exception("AP 1 didn't reject us")
     blacklist = get_blacklist(dev[0])
-    logger.info("blacklist: " + str(blacklist))
+    logger.info(f"blacklist: {str(blacklist)}")
     dev[0].request("REMOVE_NETWORK all")
     dev[0].dump_monitor()
 
@@ -66,7 +66,7 @@ def test_ap_roam_open_failed(dev, apdev):
 
     dev[0].scan_for_bss(bssid, freq=2412)
     dev[0].dump_monitor()
-    if "OK" not in dev[0].request("ROAM " + bssid):
+    if "OK" not in dev[0].request(f"ROAM {bssid}"):
         raise Exception("ROAM failed")
 
     ev = dev[0].wait_event(["CTRL-EVENT-AUTH-REJECT"], 1)
@@ -89,12 +89,14 @@ def test_ap_roam_open_failed_ssid_mismatch(dev, apdev):
     hapd0.wait_sta()
     bssid = dev[0].get_status_field("bssid")
     if bssid != bssid0:
-        raise Exception("Unexpected BSSID reported after initial connection: " + bssid)
-    if "FAIL" not in dev[0].request("ROAM " + bssid1):
+        raise Exception(f"Unexpected BSSID reported after initial connection: {bssid}")
+    if "FAIL" not in dev[0].request(f"ROAM {bssid1}"):
         raise Exception("ROAM succeed unexpectedly")
     bssid = dev[0].get_status_field("bssid")
     if bssid != bssid0:
-        raise Exception("Unexpected BSSID reported after failed roam attempt: " + bssid)
+        raise Exception(
+            f"Unexpected BSSID reported after failed roam attempt: {bssid}"
+        )
     hwsim_utils.test_connectivity(dev[0], hapd0)
 
 @remote_compatible
@@ -130,7 +132,7 @@ def test_ap_roam_wpa2_psk_pmf_mismatch(dev, apdev):
     hapd0.wait_sta()
     bssid = dev[0].get_status_field("bssid")
     if bssid != bssid0:
-        raise Exception("Unexpected BSSID reported after initial connection: " + bssid)
+        raise Exception(f"Unexpected BSSID reported after initial connection: {bssid}")
     if "OK" not in dev[0].request("ROAM " + apdev[1]['bssid']):
         raise Exception("ROAM failed")
     ev = dev[0].wait_event(["CTRL-EVENT-CONNECTED"], timeout=0.5)
@@ -138,7 +140,9 @@ def test_ap_roam_wpa2_psk_pmf_mismatch(dev, apdev):
         raise Exception("Unexpected connection reported")
     bssid = dev[0].get_status_field("bssid")
     if bssid != bssid0:
-        raise Exception("Unexpected BSSID reported after failed roam attempt: " + bssid)
+        raise Exception(
+            f"Unexpected BSSID reported after failed roam attempt: {bssid}"
+        )
     hwsim_utils.test_connectivity(dev[0], hapd0)
 
 def get_blacklist(dev):
@@ -162,15 +166,15 @@ def test_ap_reconnect_auth_timeout(dev, apdev, params):
     hapd1 = hostapd.add_ap(apdev[1], params)
     bssid1 = hapd1.own_addr()
 
-    wpas.request("BLACKLIST " + bssid0)
+    wpas.request(f"BLACKLIST {bssid0}")
 
     wpas.scan_for_bss(bssid1, freq=2412)
     wpas.request("DISCONNECT")
     if "OK" not in wpas.request("SET ignore_auth_resp 1"):
         raise Exception("SET ignore_auth_resp failed")
-    if "OK" not in wpas.request("ENABLE_NETWORK " + str(id)):
+    if "OK" not in wpas.request(f"ENABLE_NETWORK {str(id)}"):
         raise Exception("ENABLE_NETWORK failed")
-    if "OK" not in wpas.request("SELECT_NETWORK " + str(id)):
+    if "OK" not in wpas.request(f"SELECT_NETWORK {str(id)}"):
         raise Exception("SELECT_NETWORK failed")
 
     logger.info("Wait ~10s for auth timeout...")
@@ -181,9 +185,9 @@ def test_ap_reconnect_auth_timeout(dev, apdev, params):
 
     b = get_blacklist(wpas)
     if '00:00:00:00:00:00' in b:
-        raise Exception("Unexpected blacklist contents: " + str(b))
+        raise Exception(f"Unexpected blacklist contents: {str(b)}")
     if bssid1 not in b:
-        raise Exception("Unexpected blacklist contents: " + str(b))
+        raise Exception(f"Unexpected blacklist contents: {str(b)}")
 
 def test_ap_roam_with_reassoc_auth_timeout(dev, apdev, params):
     """Roam using reassoc between two APs and authentication times out"""
@@ -203,7 +207,7 @@ def test_ap_roam_with_reassoc_auth_timeout(dev, apdev, params):
     bssid1 = hapd1.own_addr()
     wpas.scan_for_bss(bssid1, freq=2412)
 
-    if "OK" not in wpas.request("SET_NETWORK " + str(id) + " bssid " + bssid1):
+    if "OK" not in wpas.request(f"SET_NETWORK {str(id)} bssid {bssid1}"):
         raise Exception("SET_NETWORK failed")
     if "OK" not in wpas.request("SET ignore_auth_resp 1"):
         raise Exception("SET ignore_auth_resp failed")
@@ -218,7 +222,7 @@ def test_ap_roam_with_reassoc_auth_timeout(dev, apdev, params):
 
     b = get_blacklist(wpas)
     if bssid0 in b:
-        raise Exception("Unexpected blacklist contents: " + str(b))
+        raise Exception(f"Unexpected blacklist contents: {str(b)}")
 
 def test_ap_roam_wpa2_psk_failed(dev, apdev, params):
     """Roam failure with WPA2-PSK AP due to wrong passphrase"""
@@ -233,7 +237,7 @@ def test_ap_roam_wpa2_psk_failed(dev, apdev, params):
     dev[0].scan_for_bss(bssid, freq=2412)
 
     dev[0].dump_monitor()
-    if "OK" not in dev[0].request("ROAM " + bssid):
+    if "OK" not in dev[0].request(f"ROAM {bssid}"):
         raise Exception("ROAM failed")
 
     ev = dev[0].wait_event(["CTRL-EVENT-SSID-TEMP-DISABLED",
@@ -243,7 +247,7 @@ def test_ap_roam_wpa2_psk_failed(dev, apdev, params):
     if "CTRL-EVENT-SSID-TEMP-DISABLED" not in ev:
         raise Exception("CTRL-EVENT-SSID-TEMP-DISABLED not seen")
 
-    if "OK" not in dev[0].request("SELECT_NETWORK id=" + str(id)):
+    if "OK" not in dev[0].request(f"SELECT_NETWORK id={str(id)}"):
         raise Exception("SELECT_NETWORK failed")
 
     ev = dev[0].wait_event(["CTRL-EVENT-SSID-REENABLED"], 3)
@@ -315,7 +319,7 @@ def test_ap_roam_wpa2_psk_race(dev, apdev):
     hwsim_utils.test_connectivity(dev[0], hapd0)
     # Wait at least two seconds to trigger the previous issue with the
     # disconnection callback.
-    for i in range(3):
+    for _ in range(3):
         time.sleep(0.8)
         hwsim_utils.test_connectivity(dev[0], hapd0)
 
@@ -343,34 +347,34 @@ def test_ap_roam_signal_level_override(dev, apdev):
         raise Exception("Unexpected roam")
 
     orig_res = dev[0].request("SIGNAL_POLL")
-    dev[0].set("driver_signal_override", src + " -1 -2 -3 -4 -5")
+    dev[0].set("driver_signal_override", f"{src} -1 -2 -3 -4 -5")
     res = dev[0].request("SIGNAL_POLL").splitlines()
     if "RSSI=-1" not in res or \
        "AVG_RSSI=-2" not in res or \
        "AVG_BEACON_RSSI=-3" not in res or \
        "NOISE=-4" not in res:
-        raise Exception("SIGNAL_POLL override did not work: " + str(res))
+        raise Exception(f"SIGNAL_POLL override did not work: {str(res)}")
 
     dev[0].set("driver_signal_override", src)
     new_res = dev[0].request("SIGNAL_POLL")
     if orig_res != new_res:
-        raise Exception("SIGNAL_POLL restore did not work: " + new_res)
+        raise Exception(f"SIGNAL_POLL restore did not work: {new_res}")
 
     tests = [("-30 -30 -30 -95 -30", "-30 -30 -30 -95 -30"),
              ("-30 -30 -30 -95 -30", "-20 -20 -20 -95 -20"),
              ("-90 -90 -90 -95 -90", "-89 -89 -89 -95 -89"),
              ("-90 -90 -90 -95 -95", "-89 -89 -89 -95 -89")]
     for src_override, dst_override in tests:
-        dev[0].set("driver_signal_override", src + " " + src_override)
-        dev[0].set("driver_signal_override", dst + " " + dst_override)
+        dev[0].set("driver_signal_override", f"{src} {src_override}")
+        dev[0].set("driver_signal_override", f"{dst} {dst_override}")
         dev[0].scan(freq=2412)
         ev = dev[0].wait_event(["CTRL-EVENT-CONNECTED"], 0.1)
         if ev is not None:
             raise Exception("Unexpected roam")
         dev[0].dump_monitor()
 
-    dev[0].set("driver_signal_override", src + " -90 -90 -90 -95 -90")
-    dev[0].set("driver_signal_override", dst + " -80 -80 -80 -95 -80")
+    dev[0].set("driver_signal_override", f"{src} -90 -90 -90 -95 -90")
+    dev[0].set("driver_signal_override", f"{dst} -80 -80 -80 -95 -80")
     dev[0].scan(freq=2412)
     dev[0].wait_connected()
     if dst != dev[0].get_status_field('bssid'):

@@ -16,7 +16,7 @@ def get_nearby_ap_addr(sin):
 	beacons = list(sniff(opened_socket=sin, timeout=0.5, lfilter=lambda p: (Dot11 in p or Dot11FCS in p) \
 									and p.type == 0 and p.subtype == 8 \
 									and p.dBm_AntSignal != None))
-	if len(beacons) == 0:
+	if not beacons:
 		return None, None
 	beacons.sort(key=lambda p: p.dBm_AntSignal, reverse=True)
 	return beacons[0].addr2, get_ssid(beacons[0])
@@ -28,7 +28,7 @@ def inject_and_capture(sout, sin, p, count=0, retries=1):
 
 	attempt = 0
 	while True:
-		log(DEBUG, "Injecting test frame: " + repr(toinject))
+		log(DEBUG, f"Injecting test frame: {repr(toinject)}")
 		sout.send(RadioTap(present="TXFlags", TXFlags="NOSEQ+ORDER")/toinject)
 
 		# TODO:Move this to a shared socket interface?
@@ -73,8 +73,8 @@ def test_packet_injection(sout, sin, p, test_func, frametype, msgfail):
 	if len(packets) < 1:
 		log(ERROR,   f"[-] Unable to capture injected {frametype}.")
 		return FLAG_NOCAPTURE
-	if not all([test_func(cap) for cap in packets]):
-		log(ERROR,   f"[-] " + msgfail.format(frametype=frametype))
+	if not all(test_func(cap) for cap in packets):
+		log(ERROR, f"[-] {msgfail.format(frametype=frametype)}")
 		return FLAG_FAIL
 	log(STATUS, f"    Properly captured injected {frametype}.")
 	return 0
@@ -115,22 +115,22 @@ def test_injection_order(sout, sin, ref, strtype, retries=1):
 	p2 = Dot11(FCfield=ref.FCfield, addr1=ref.addr1, addr2=ref.addr2, type=2, subtype=8, SC=33<<4)/Dot11QoS(TID=2)
 	p6 = Dot11(FCfield=ref.FCfield, addr1=ref.addr1, addr2=ref.addr2, type=2, subtype=8, SC=33<<4)/Dot11QoS(TID=6)
 
-	for i in range(retries + 1):
+	for _ in range(retries + 1):
 		# First frame causes Tx queue to be busy. Next two frames tests if frames are reordered.
 		for p in [p2] * 4 + [p6]:
 			sout.send(RadioTap(present="TXFlags", TXFlags="NOSEQ+ORDER")/p/Raw(label))
 
 		packets = sniff(opened_socket=sin, timeout=1.5, lfilter=lambda p: Dot11QoS in p and label in raw(p))
 		tids = [p[Dot11QoS].TID for p in packets]
-		log(STATUS, "Captured TIDs: " + str(tids))
+		log(STATUS, f"Captured TIDs: {tids}")
 
 		# Sanity check the captured TIDs, and then analyze the results
-		if not (2 in tids and 6 in tids):
-			log(STATUS,  f"We didn't capture all injected QoS TID frames, retrying.")
+		if 2 not in tids or 6 not in tids:
+			log(STATUS, "We didn't capture all injected QoS TID frames, retrying.")
 		else:
 			break
 
-	if not (2 in tids and 6 in tids):
+	if 2 not in tids or 6 not in tids:
 		log(ERROR,  f"[-] We didn't capture all injected QoS TID frames with {strtype}. Test failed.")
 		return FLAG_NOCAPTURE
 	elif tids != sorted(tids):
@@ -198,12 +198,15 @@ def test_injection(iface_out, iface_in=None, peermac=None, ownmac=None, testack=
 
 	# Print out what we are tested. Abort if the driver is known not to support a self-test.
 	log(STATUS, f"Injection test: using {iface_out} ({driver_out}) to inject frames")
-	if iface_in == None:
+	if iface_in is None:
 		log(WARNING, f"Injection selftest: also using {iface_out} to capture frames. This means the tests can detect if the kernel")
-		log(WARNING, f"                    interferes with injection, but it cannot check the behaviour of the device itself.")
+		log(
+			WARNING,
+			"                    interferes with injection, but it cannot check the behaviour of the device itself.",
+		)
 		if driver_out in ["mt76x2u"]:
 			log(WARNING, f"                    WARNING: self-test with the {driver_out} driver can be unreliable.")
-		elif not driver_out in ["iwlwifi", "ath9k_htc"]:
+		elif driver_out not in ["iwlwifi", "ath9k_htc"]:
 			log(WARNING, f"                    WARNING: it is unknown whether a self-test works with the {driver_out} driver.")
 
 		sin = sout
@@ -218,7 +221,7 @@ def test_injection(iface_out, iface_in=None, peermac=None, ownmac=None, testack=
 	# this address because the MAC address of the second virtual interface may be different
 	# from the MAC address used by the client or AP. Only use the MAC address of sout.iface
 	# if no "own" address is supplied by the caller.
-	if ownmac == None:
+	if ownmac is None:
 		ownmac = get_macaddress(sout.iface)
 
 	# Some devices only properly inject frames when either the to-DS or from-DS flag is set,
@@ -244,9 +247,9 @@ def test_injection(iface_out, iface_in=None, peermac=None, ownmac=None, testack=
 		channel = get_channel(sin.iface)
 		log(STATUS, f"--- Searching for AP on channel {channel} to test ACK behaviour.")
 		apmac, ssid = get_nearby_ap_addr(sout)
-		if apmac == None and peermac == None:
+		if apmac is None and peermac is None:
 			raise IOError("Unable to find nearby AP to test injection")
-		elif apmac == None:
+		elif apmac is None:
 			log(WARNING, f"Unable to find AP. Try a different channel? Testing ACK behaviour with peer {peermac}.")
 			destmac = peermac
 		else:
@@ -259,9 +262,12 @@ def test_injection(iface_out, iface_in=None, peermac=None, ownmac=None, testack=
 	if status == 0:
 		log(STATUS, "==> The most important tests have been passed successfully!", color="green")
 	if status & FLAG_NOCAPTURE != 0:
-		log(WARNING, f"==> Failed to capture some frames. Try another channel or use another monitoring device.")
-	if status & FLAG_FAIL !=0 :
-		log(ERROR, f"==> Some tests failed. Are you using patched drivers/firmware?")
+		log(
+			WARNING,
+			"==> Failed to capture some frames. Try another channel or use another monitoring device.",
+		)
+	if status & FLAG_FAIL !=0:
+		log(ERROR, "==> Some tests failed. Are you using patched drivers/firmware?")
 
 	sout.close()
 	sin.close()

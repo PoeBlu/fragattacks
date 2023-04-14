@@ -26,12 +26,16 @@ def check_qos_map(ap, hapd, dev, sta, dscp, tid, ap_tid=None):
     tx = wt.get_tx_tid(bssid, sta, tid)
     if tx == 0:
         [tx, rx] = wt.get_tid_counters(bssid, sta)
-        logger.info("Expected TX DSCP " + str(dscp) + " with TID " + str(tid) + " but counters: " + str(tx))
+        logger.info(
+            f"Expected TX DSCP {str(dscp)} with TID {str(tid)} but counters: {str(tx)}"
+        )
         raise Exception("No STA->AP data frame using the expected TID")
     rx = wt.get_rx_tid(bssid, sta, ap_tid)
     if rx == 0:
         [tx, rx] = wt.get_tid_counters(bssid, sta)
-        logger.info("Expected RX DSCP " + str(dscp) + " with TID " + str(ap_tid) + " but counters: " + str(rx))
+        logger.info(
+            f"Expected RX DSCP {str(dscp)} with TID {str(ap_tid)} but counters: {str(rx)}"
+        )
         raise Exception("No AP->STA data frame using the expected TID")
 
 @remote_compatible
@@ -41,8 +45,10 @@ def test_ap_qosmap(dev, apdev):
     if int(drv_flags, 0) & 0x40000000 == 0:
         raise HwsimSkip("Driver does not support QoS Map")
     ssid = "test-qosmap"
-    params = {"ssid": ssid}
-    params['qos_map_set'] = '53,2,22,6,8,15,0,7,255,255,16,31,32,39,255,255,40,47,48,55'
+    params = {
+        "ssid": ssid,
+        'qos_map_set': '53,2,22,6,8,15,0,7,255,255,16,31,32,39,255,255,40,47,48,55',
+    }
     hapd = hostapd.add_ap(apdev[0], params)
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
     time.sleep(0.1)
@@ -164,6 +170,8 @@ def test_ap_qosmap_invalid(dev, apdev):
 
     dev[0].connect(ssid, key_mgmt="NONE", scan_freq="2412")
     with alloc_fail(hapd, 1,
-                    "wpabuf_alloc;hostapd_ctrl_iface_send_qos_map_conf"):
-        if "FAIL" not in hapd.request("SEND_QOS_MAP_CONF " + dev[0].own_addr()):
+                        "wpabuf_alloc;hostapd_ctrl_iface_send_qos_map_conf"):
+        if "FAIL" not in hapd.request(
+            f"SEND_QOS_MAP_CONF {dev[0].own_addr()}"
+        ):
             raise Exception("SEND_QOS_MAP_CONF accepted during OOM")
